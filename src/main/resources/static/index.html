@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动化测试系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+        .right-panel {
+            flex: 1;
+            min-width: 0;
+        }
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .panel-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .test-case-name {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-cases-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .test-case-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .test-case-item:hover {
+            background: #e9ecef;
+        }
+        .test-case-item.active {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+        .steps-list {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .step-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .step-item:hover {
+            background: #e9ecef;
+        }
+        .step-item.active {
+            background: #e3f2fd;
+            border-color: #90caf9;
+        }
+        .step-number {
+            font-weight: bold;
+            color: #666;
+            min-width: 60px;
+        }
+        .step-type {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .step-content {
+            flex: 2;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .elements-list {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .element-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .element-item:hover {
+            background: #e9ecef;
+        }
+        .run-results {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        .log-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .log-item.success {
+            color: #28a745;
+        }
+        .log-item.error {
+            color: #dc3545;
+        }
+        .button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .button-primary {
+            background: #007bff;
+            color: white;
+        }
+        .button-primary:hover {
+            background: #0056b3;
+        }
+        .button-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .button-secondary:hover {
+            background: #545b62;
+        }
+        .button-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .button-danger:hover {
+            background: #c82333;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="left-panel">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">测试用例编辑器</div>
+                    <div class="button-group">
+                        <button class="button button-primary" onclick="saveTestCase()">保存</button>
+                        <button class="button button-secondary" onclick="runTestCase()">运行</button>
+                    </div>
+                </div>
+                <input type="text" id="testCaseName" class="test-case-name" placeholder="输入测试用例名称">
+                <div class="test-cases-list" id="testCasesList"></div>
+                <div class="steps-list" id="stepsList"></div>
+                <button class="button button-primary" onclick="addStep()">添加步骤</button>
+            </div>
+        </div>
+        <div class="right-panel">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">元素库</div>
+                </div>
+                <div class="elements-list" id="elementsList"></div>
+            </div>
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-header">
+                    <div class="panel-title">执行结果</div>
+                </div>
+                <div class="run-results" id="runResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加步骤的模板 -->
+    <template id="stepTemplate">
+        <div class="step-item" onclick="activateStep(this)">
+            <div class="step-number"></div>
+            <select class="step-type"></select>
+            <input type="text" class="step-content" placeholder="步骤内容">
+            <button class="button button-danger" onclick="removeStep(this, event)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </template>
+
+    <script>
+        let currentTestCase = null;
+        let elements = [];
+        let actions = [];
+        let groupedElements = {};
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTestCases();
+            loadActions();
+            loadGroupedElements();
+        });
+
+        // 加载测试用例列表
+        async function loadTestCases() {
+            try {
+                const response = await fetch('/api/testcases');
+                const testCases = await response.json();
+                const testCasesList = document.getElementById('testCasesList');
+                testCasesList.innerHTML = '';
+                
+                testCases.forEach(testCase => {
+                    const div = document.createElement('div');
+                    div.className = 'test-case-item';
+                    div.textContent = testCase.name;
+                    div.onclick = () => loadTestCaseContent(testCase.id);
+                    testCasesList.appendChild(div);
+                });
+            } catch (error) {
+                console.error('加载测试用例列表失败:', error);
+            }
+        }
+
+        // 加载测试用例内容
+        async function loadTestCaseContent(id) {
+            try {
+                const response = await fetch(`/api/testcases/${id}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentTestCase = id;
+                    document.getElementById('testCaseName').value = id.replace('.txt', '');
+                    
+                    // 更新UI选中状态
+                    document.querySelectorAll('.test-case-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.textContent === id.replace('.txt', '')) {
+                            item.classList.add('active');
+                        }
+                    });
+
+                    // 显示测试步骤
+                    const stepsList = document.getElementById('stepsList');
+                    stepsList.innerHTML = '';
+                    data.steps.forEach((step, index) => {
+                        addStep(step, index + 1);
+                    });
+                } else {
+                    alert('加载测试用例失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error('加载测试用例内容失败:', error);
+                alert('加载测试用例失败');
+            }
+        }
+
+        // 加载动作类型列表
+        async function loadActions() {
+            try {
+                const response = await fetch('/api/actions');
+                actions = await response.json();
+                // 确保动作类型列表加载完成后再添加步骤
+                if (actions.length > 0) {
+                    addStep();
+                }
+            } catch (error) {
+                console.error('加载动作类型列表失败:', error);
+            }
+        }
+
+        // 加载按context分组的元素列表
+        async function loadGroupedElements() {
+            try {
+                const response = await fetch('/api/elements/grouped');
+                groupedElements = await response.json();
+                displayGroupedElements(groupedElements);
+            } catch (error) {
+                console.error('加载分组元素列表失败:', error);
+            }
+        }
+
+        // 显示按context分组的元素列表
+        function displayGroupedElements(groupedElements) {
+            const elementsList = document.getElementById('elementsList');
+            elementsList.innerHTML = '';
+
+            Object.entries(groupedElements).forEach(([context, elements]) => {
+                const contextDiv = document.createElement('div');
+                contextDiv.className = 'mb-3';
+                
+                const contextHeader = document.createElement('h6');
+                contextHeader.textContent = context;
+                contextDiv.appendChild(contextHeader);
+
+                elements.forEach(element => {
+                    const elementDiv = document.createElement('div');
+                    elementDiv.className = 'element-item';
+                    elementDiv.textContent = element.name;
+                    elementDiv.onclick = () => insertElement(element);
+                    contextDiv.appendChild(elementDiv);
+                });
+
+                elementsList.appendChild(contextDiv);
+            });
+        }
+
+        // 搜索元素
+        function searchElements() {
+            const searchText = document.getElementById('elementSearch').value.toLowerCase();
+            const filteredElements = elements.filter(element => 
+                element.name.toLowerCase().includes(searchText) ||
+                element.selector.toLowerCase().includes(searchText)
+            );
+            displayElements(filteredElements);
+        }
+
+        // 激活步骤
+        function activateStep(stepElement) {
+            document.querySelectorAll('.step-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            stepElement.classList.add('active');
+        }
+
+        // 插入元素到当前步骤
+        function insertElement(element) {
+            const activeStep = document.querySelector('.step-item.active');
+            if (activeStep) {
+                const contentInput = activeStep.querySelector('.step-content');
+                const actionSelect = activeStep.querySelector('.step-type');
+                const action = actionSelect.value;
+
+                // 根据不同的动作类型构建内容
+                let content = '';
+                switch (action) {
+                    case '点击':
+                    case '右键点击':
+                    case '双击':
+                    case '鼠标移动到':
+                        content = `${element.context}的${element.name}`;
+                        break;
+                    case '在':
+                        content = `在"${element.name}"输入"${element.name}"`;
+                        break;
+                    case '出现':
+                    case '存在':
+                        content = `${element.context}的${element.name}`;
+                        break;
+                    case '等待':
+                    case '设置自动等待':
+                        content = `${element.name}秒`;
+                        break;
+                    default:
+                        content = element.name;
+                }
+                contentInput.value = content;
+            } else {
+                alert('请先选择一个步骤');
+            }
+        }
+
+        // 添加测试步骤
+        function addStep(stepData = null, stepNumber = null) {
+            const template = document.getElementById('stepTemplate');
+            const stepElement = template.content.cloneNode(true);
+            const stepItem = stepElement.querySelector('.step-item');
+            
+            // 创建动作类型下拉框
+            const actionSelect = document.createElement('select');
+            actionSelect.className = 'step-type';
+            actions.forEach(action => {
+                const option = document.createElement('option');
+                option.value = action;
+                option.textContent = action;
+                actionSelect.appendChild(option);
+            });
+            
+            // 替换原有的动作类型输入框
+            const oldTypeInput = stepItem.querySelector('.step-type');
+            oldTypeInput.parentNode.replaceChild(actionSelect, oldTypeInput);
+            
+            if (stepData) {
+                actionSelect.value = stepData.type;
+                stepItem.querySelector('.step-content').value = stepData.content;
+            }
+            
+            if (stepNumber) {
+                stepItem.querySelector('.step-number').textContent = `步骤 ${stepNumber}`;
+            } else {
+                const steps = document.querySelectorAll('.step-item');
+                stepItem.querySelector('.step-number').textContent = `步骤 ${steps.length + 1}`;
+            }
+            
+            document.getElementById('stepsList').appendChild(stepElement);
+            
+            // 激活新添加的步骤
+            setTimeout(() => {
+                const newStep = document.querySelectorAll('.step-item')[document.querySelectorAll('.step-item').length - 1];
+                activateStep(newStep);
+            }, 0);
+        }
+
+        // 删除测试步骤
+        function removeStep(button, event) {
+            event.stopPropagation(); // 阻止事件冒泡
+            button.closest('.step-item').remove();
+            updateStepNumbers();
+        }
+
+        // 更新步骤编号
+        function updateStepNumbers() {
+            document.querySelectorAll('.step-item').forEach((item, index) => {
+                item.querySelector('.step-number').textContent = `步骤 ${index + 1}`;
+            });
+        }
+
+        // 创建新测试用例
+        function createNewTestCase() {
+            currentTestCase = null;
+            document.getElementById('testCaseName').value = '';
+            document.getElementById('stepsList').innerHTML = '';
+            document.querySelectorAll('.test-case-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        // 保存测试用例
+        async function saveTestCase() {
+            const name = document.getElementById('testCaseName').value;
+            if (!name) {
+                alert('请输入测试用例名称');
+                return;
+            }
+
+            const steps = [];
+            document.querySelectorAll('.step-item').forEach(item => {
+                const type = item.querySelector('.step-type').value;
+                let content = item.querySelector('.step-content').value;
+                
+                // 为涉及秒数的命令添加"秒"字
+                if ((type === '等待' || type === '设置自动等待') && !content.endsWith('秒')) {
+                    content += '秒';
+                }
+                
+                steps.push({
+                    type: type,
+                    content: content
+                });
+            });
+
+            try {
+                await fetch('/api/testcases', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        steps: steps
+                    })
+                });
+                
+                alert('保存成功');
+                loadTestCases();
+            } catch (error) {
+                console.error('保存测试用例失败:', error);
+                alert('保存失败');
+            }
+        }
+
+        // 运行测试用例
+        async function runTestCase() {
+            const steps = [];
+            document.querySelectorAll('.step-item').forEach(item => {
+                const type = item.querySelector('.step-type').value;
+                let content = item.querySelector('.step-content').value;
+                
+                // 为涉及秒数的命令添加"秒"字
+                if ((type === '等待' || type === '设置自动等待') && !content.endsWith('秒')) {
+                    content += '秒';
+                }
+                
+                steps.push({
+                    type: type,
+                    content: content
+                });
+            });
+
+            const resultsDiv = document.getElementById('runResults');
+            resultsDiv.innerHTML = '<div class="log-item">开始执行测试用例...</div>';
+
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ steps: steps })
+                });
+                
+                const result = await response.json();
+                result.logs.forEach(log => {
+                    const div = document.createElement('div');
+                    div.className = 'log-item';
+                    if (log.startsWith('错误:')) {
+                        div.classList.add('error');
+                    } else {
+                        div.classList.add('success');
+                    }
+                    div.textContent = log;
+                    resultsDiv.appendChild(div);
+                    resultsDiv.scrollTop = resultsDiv.scrollHeight;
+                });
+            } catch (error) {
+                console.error('运行测试用例失败:', error);
+                const div = document.createElement('div');
+                div.className = 'log-item error';
+                div.textContent = '运行失败: ' + error.message;
+                resultsDiv.appendChild(div);
+                resultsDiv.scrollTop = resultsDiv.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>

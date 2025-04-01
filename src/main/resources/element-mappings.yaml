@@ -1,0 +1,45 @@
+defaultLocatorType: "image"
+
+configs:
+  - name: "用户名输入框"
+    context: "百度"
+    imagePath: "images/百度/用户名_输入框_1.png"
+    xpath: ""
+    cssSelector: ""
+    locatorType: "image"
+
+  - name: "登录按钮"
+    context: "百度"
+    imagePath: "images/百度/登录_按钮_1.png"
+    xpath: ""
+    cssSelector: ""
+    locatorType: "image"
+
+  - name: "下载腾讯会议按钮"
+    context: "腾讯会议"
+    imagePath: "images/腾讯会议/下载腾讯会议_按钮_1.jpg"
+    xpath: ""
+    cssSelector: ""
+    locatorType: "image"
+
+  - name: "使用非中国大陆地区手机号码请前往下载 V标签"
+    context: "腾讯会议"
+    imagePath: "images/腾讯会议/使用非中国大陆地区手机号码请前往下载 V_标签_3.jpg"
+    xpath: ""
+    cssSelector: ""
+    locatorType: "image"
+
+  - name: "启动会议按钮"
+    context: "腾讯会议"
+    imagePath: "images/腾讯会议/启动会议_按钮_2.jpg"
+    xpath: ""
+    cssSelector: ""
+    locatorType: "image"
+
+  - name: "用户名输入框"
+    context: "腾讯会议"
+    imagePath: "images/腾讯会议/用户名_输入框_1.jpg"
+    xpath: ""
+    cssSelector: ""
+    locatorType: "image"
+
