@@ -590,6 +590,10 @@ function addStep(stepData = null, stepNumber = null) {
     if (stepData) {
         actionSelect.value = stepData.type;
         stepItem.querySelector('.step-content').value = stepData.content;
+
+        // 触发change事件，更新UI结构
+        const event = new Event('change');
+        actionSelect.dispatchEvent(event);
     
         // 如果是"在"命令，解析内容到双输入框
         if (stepData.type === '在' && stepData.content) {
@@ -604,39 +608,53 @@ function addStep(stepData = null, stepNumber = null) {
             const match = stepData.content.match(/(.+?)(存在|出现)，则(.+?)(.+)/);
             if (match) {
                 const [_, element, condition, action, target] = match;
-                stepItem.querySelector('.condition-element').value = element;
-                stepItem.querySelector('.condition-type').value = condition;
-                
-                // 获取条件动作选择器并设置值
-                const conditionAction = stepItem.querySelector('.condition-action');
-                conditionAction.value = action;
-                
-                // 触发change事件，更新输入框
-                const event = new Event('change');
-                conditionAction.dispatchEvent(event);
-                
-                // 检查动作是否为"在"，处理特殊格式
-                if (action === '在' && target.includes('输入"')) {
-                    const targetMatch = target.match(/(.+?)输入"(.+?)"/);
-                    if (targetMatch) {
-                        stepItem.querySelector('.condition-element-input').value = targetMatch[1];
-                        stepItem.querySelector('.condition-content-input').value = targetMatch[2];
+            
+                // 设置条件输入值
+                setTimeout(() => {
+                    // 获取生成的DOM结构并填充数据
+                    const conditionElement = stepItem.querySelector('.condition-element');
+                    const conditionType = stepItem.querySelector('.condition-type');
+                    const conditionAction = stepItem.querySelector('.condition-action');
+                    
+                    if (conditionElement) conditionElement.value = element;
+                    if (conditionType) conditionType.value = condition;
+                    
+                    if (conditionAction) {
+                        conditionAction.value = action;
+
+                        // 触发条件动作的change事件，更新相应的输入框结构
+                        const actionEvent = new Event('change');
+                        conditionAction.dispatchEvent(actionEvent);
+
+                        // 再次延时来确保条件动作相关的DOM结构已生成
+                        setTimeout(() => {
+                            // 检查动作是否为"在"，处理特殊格式
+                            if (action === '在' && target.includes('输入"')) {
+                                const targetMatch = target.match(/(.+?)输入"(.+?)"/);
+                                if (targetMatch) {
+                                    const elementInput = stepItem.querySelector('.condition-element-input');
+                                    const contentInput = stepItem.querySelector('.condition-content-input');
+
+                                    if (elementInput) elementInput.value = targetMatch[1];
+                                    if (contentInput) contentInput.value = targetMatch[2];
+                                }
+                            } else {
+                                // 普通动作，直接设置目标
+                                const conditionContent = stepItem.querySelector('.condition-content');
+                                if (conditionContent) conditionContent.value = target;
+                            }
+                        }, 50); // 短延时确保DOM更新完成
                     }
-                } else {
-                    // 普通动作，直接设置目标
-                    if (stepItem.querySelector('.condition-content')) {
-                        stepItem.querySelector('.condition-content').value = target;
-                    }
-                }
+                }, 50); // 短延时确保DOM更新完成
             }
         }
     }
 
     // 事件触发一下显示/隐藏相应的输入框
-    if (stepData) {
-        const event = new Event('change');
-        actionSelect.dispatchEvent(event);
-    }
+    // if (stepData) {
+    //     const event = new Event('change');
+    //     actionSelect.dispatchEvent(event);
+    // }
 
     if (stepNumber) {
         stepItem.querySelector('.step-number').textContent = `步骤 ${stepNumber}`;

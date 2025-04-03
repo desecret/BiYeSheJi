@@ -154,7 +154,9 @@ public class util {
                         context = pathParts[0]; // 使用第一级目录名作为context
                     }
 
-                    String[] parts = file.getName().split("_");
+                    // 去除filename中的扩展名
+                    filename = filename.substring(0, filename.lastIndexOf('.'));
+                    String[] parts = filename.split("_");
                     if (parts.length >= 2) {
                         // 从文件名提取显示名称
                         String displayName = parts[0] + parts[1];

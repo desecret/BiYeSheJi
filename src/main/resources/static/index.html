@@ -77,12 +77,20 @@
     <template id="stepTemplate">
         <div class="step-item" onclick="activateStep(this)">
             <div class="step-number"></div>
-            <select class="step-type" onchange="handleStepTypeChange(this)"></select>
+            <label>
+                <select class="step-type" onchange="handleStepTypeChange(this)"></select>
+            </label>
             <div style="flex: 2;">
-                <input type="text" class="step-content" placeholder="步骤内容" style="width: 100%;">
+                <label>
+                    <input type="text" class="step-content" placeholder="步骤内容" style="width: 100%;">
+                </label>
                 <div class="dual-input" style="display: none; width: 100%;">
-                    <input type="text" class="step-input-element" placeholder="输入元素" style="width: 100%; margin-bottom: 5px; display: block;">
-                    <input type="text" class="step-input-content" placeholder="输入内容" style="width: 100%; display: block;">
+                    <label>
+                        <input type="text" class="step-input-element" placeholder="输入元素" style="width: 100%; margin-bottom: 5px; display: block;">
+                    </label>
+                    <label>
+                        <input type="text" class="step-input-content" placeholder="输入内容" style="width: 100%; display: block;">
+                    </label>
                 </div>
                 <div class="condition-input" style="display: none; width: 100%;">
                     <div style="display: flex; align-items: center; margin-bottom: 5px;">
@@ -140,7 +148,7 @@
                     <label for="editElementXpath">XPath:</label>
                     <input type="text" id="editElementXpath" class="form-control">
                 </div>
-                
+
                 <!-- 元素图片预览 -->
                 <div class="element-preview">
                     <h5>元素预览</h5>
@@ -200,7 +208,7 @@
                     <label for="newElementXpath">XPath:</label>
                     <input type="text" id="newElementXpath" class="form-control">
                 </div>
-                
+
                 <!-- 元素图片上传 -->
                 <div class="element-preview">
                     <h5>元素图片</h5>
