@@ -191,7 +191,7 @@ public class RulesRegistry {
             String[] parts = condition.replaceAll("(.*?)的(.*?)出现", "$1,$2").split(",", 2);
             String context = parts.length > 0 ? parts[0] : "";
             String element = parts.length > 1 ? parts[1] : "";
-            return "present(\"" + ElementLocatorFactory.getLocator(element, context) + "\")";
+            return "exist(\"" + ElementLocatorFactory.getLocator(element, context) + "\")";
         }
         // 可以添加更多条件类型处理
         return condition; // 简单处理，实际应用需更复杂的解析

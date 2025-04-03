@@ -3,6 +3,15 @@ package org.example.server.config;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 元素配置类
+ * - name: 元素名称
+ * - context: 上下文信息
+ * - imagePath: 图片路径
+ * - xpath: xpath路径
+ * - cssSelector: css选择器
+ * - locatorType: 定位方式
+ */
 @Data
 public class ElementConfig {
     private String name;

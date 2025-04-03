@@ -40,59 +40,78 @@ public class httpRequest {
      * 将多个图像文件上传到Flask服务器并处理响应
      *
      * @param serverUrl Flask服务器的URL
-     * @param imagePaths 图像文件的路径
+     * @param imagePath 图像文件的路径
      * @throws IOException 如果HTTP通信或处理响应时出错
      */
-    public static void uploadImagesAndProcessResponse(String serverUrl, String imagePaths) throws IOException {
-        if (serverUrl == null || serverUrl.trim().isEmpty()) {
-            throw new IllegalArgumentException("服务器URL不能为空");
-        }
+    public static void uploadImagesAndProcessResponse(String serverUrl, String imagePath) throws IOException {
+    if (serverUrl == null || serverUrl.trim().isEmpty()) {
+        throw new IllegalArgumentException("服务器URL不能为空");
+    }
 
-        if (imagePaths == null || imagePaths.trim().isEmpty()) {
-            throw new IllegalArgumentException("图像路径不能为空");
-        }
+    if (imagePath == null || imagePath.trim().isEmpty()) {
+        throw new IllegalArgumentException("图像路径不能为空");
+    }
 
-        List<String> imagePathsList;
-        try {
-            // 从imagePaths目录中读取所有图像文件，组成列表
-            try (Stream<Path> pathStream = Files.walk(Paths.get(imagePaths))) {
+    List<String> imagePathsList;
+    File pathFile = new File(imagePath);
+
+    try {
+        // Check if the path is a directory or a file
+        if (pathFile.isDirectory()) {
+            // If it's a directory, collect all image files from it
+            logger.info("处理目录中的图片: " + imagePath);
+            try (Stream<Path> pathStream = Files.walk(Paths.get(imagePath))) {
                 imagePathsList = pathStream
                         .filter(Files::isRegularFile)
                         .filter(path -> {
                             String fileName = path.toString().toLowerCase();
                             return fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") ||
-                                   fileName.endsWith(".png") || fileName.endsWith(".gif");
+                                  fileName.endsWith(".png") || fileName.endsWith(".gif");
                         })
                         .map(Path::toString)
                         .collect(Collectors.toList());
             }
-
-            if (imagePathsList.isEmpty()) {
-                logger.warning("未在指定路径找到图片文件: " + imagePaths);
+        } else if (pathFile.isFile()) {
+            // If it's a file, just use this single file
+            logger.info("处理单个图片文件: " + imagePath);
+            String fileName = pathFile.getName().toLowerCase();
+            if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") ||
+                fileName.endsWith(".png") || fileName.endsWith(".gif")) {
+                imagePathsList = Collections.singletonList(imagePath);
+            } else {
+                logger.warning("提供的文件不是支持的图片格式: " + imagePath);
                 return;
             }
-
-            logger.info("找到 " + imagePathsList.size() + " 个图片文件准备上传");
-
-            Map<String, Object> response = uploadImages(serverUrl, imagePathsList);
-
-            if (response != null && response.containsKey("results")) {
-                @SuppressWarnings("unchecked")
-                Map<String, Map<String, Object>> results = (Map<String, Map<String, Object>>) response.get("results");
-                saveImagesFromResponse(results);
-                logger.info("成功处理服务器响应并保存图像");
-            } else {
-                logger.warning("服务器响应缺少预期的'results'字段");
-            }
-        } catch (NoSuchFileException e) {
-            logger.log(Level.SEVERE, "指定的路径不存在: " + imagePaths, e);
-            throw new FileNotFoundException("指定的图片目录不存在: " + imagePaths);
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "处理图片文件时发生I/O错误", e);
-            throw e;
+        } else {
+            logger.warning("提供的路径既不是文件也不是目录: " + imagePath);
+            return;
         }
-    }
 
+        if (imagePathsList.isEmpty()) {
+            logger.warning("未在指定路径找到图片文件: " + imagePath);
+            return;
+        }
+
+        logger.info("找到 " + imagePathsList.size() + " 个图片文件准备上传");
+
+        Map<String, Object> response = uploadImages(serverUrl, imagePathsList);
+
+        if (response != null && response.containsKey("results")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Map<String, Object>> results = (Map<String, Map<String, Object>>) response.get("results");
+            saveImagesFromResponse(results);
+            logger.info("成功处理服务器响应并保存图像");
+        } else {
+            logger.warning("服务器响应缺少预期的'results'字段");
+        }
+    } catch (NoSuchFileException e) {
+        logger.log(Level.SEVERE, "指定的路径不存在: " + imagePath, e);
+        throw new FileNotFoundException("指定的图片路径不存在: " + imagePath);
+    } catch (IOException e) {
+        logger.log(Level.SEVERE, "处理图片文件时发生I/O错误", e);
+        throw e;
+    }
+}
     /**
      * 将多个图像上传到Flask服务器
      *

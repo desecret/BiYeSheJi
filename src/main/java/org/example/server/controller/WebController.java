@@ -3,18 +3,34 @@ package org.example.server.controller;
 import org.example.server.Init;
 import org.example.server.config.ElementConfig;
 import org.example.server.config.ElementMappings;
+import org.example.server.locator.ElementLocatorFactory;
 import org.example.server.rules.CommandGenerator;
 import org.example.server.rules.RulesRegistry;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.DumperOptions;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import org.springframework.core.io.Resource;
 import java.util.*;
+
+import static org.example.server.staticString.*;
+import static org.example.server.util.httpRequest.uploadImagesAndProcessResponse;
+import static org.example.server.util.util.writeToYaml;
 
 /**
  * Web控制器，提供自动化测试系统的API接口
@@ -25,11 +41,6 @@ import java.util.*;
 @RestController
 @RequestMapping("/api")
 public class WebController {
-
-    /** YAML元素映射文件路径 */
-    private static final String YAML_FILE = "src/main/resources/element-mappings.yaml";
-    /** 测试用例存储目录路径 */
-    private static final String CASES_DIR = "src/main/java/org/example/server/cases/";
 
     /**
      * 构造函数
@@ -334,5 +345,527 @@ public class WebController {
         Map<String, Object> result = new HashMap<>();
         result.put("logs", logs);
         return result;
+    }
+
+    /**
+     * 处理图片上传，识别UI元素并更新元素库
+     * <p>
+     * 该接口接收上传的图片，调用图像处理服务识别图片中的UI元素，
+     * 更新元素库配置文件，并返回处理结果
+     * </p>
+     *
+     * @param image 上传的图片文件
+     * @return 处理结果，包含成功状态和识别的元素列表
+     */
+    @PostMapping(value = "/upload/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> uploadImage(@RequestParam("image") MultipartFile image) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // 确保上传目录存在
+            File uploadDir = new File(UPLOAD_DIR);
+            if (!uploadDir.exists()) {
+                uploadDir.mkdirs();
+            }
+
+            // 保存上传的图片到临时文件
+            String filename = image.getOriginalFilename();
+            Path filePath = Paths.get(UPLOAD_DIR, filename);
+            Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // 调用图像处理服务识别UI元素
+            uploadImagesAndProcessResponse(url, String.valueOf(filePath));
+            response.put("success", true);
+            writeToYaml();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", "图片处理失败: " + e.getMessage());
+        }
+
+        return response;
+    }
+
+    /**
+     * 获取元素对应的图片路径映射
+     * <p>
+     * 返回每个元素ID和其对应的图片URL或文件路径的映射关系
+     * </p>
+     * 
+     * @return 包含元素标识符和图片路径的映射
+     */
+    @GetMapping("/elements/images")
+    public Map<String, String> getElementImages() {
+        Map<String, String> imageMap = new HashMap<>();
+
+        try {
+            // 获取元素库
+            Constructor constructor = new Constructor(ElementMappings.class);
+            Yaml yaml = new Yaml(constructor);
+            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+
+            if (mappings != null && mappings.getConfigs() != null) {
+                for (ElementConfig element : mappings.getConfigs()) {
+                    String elementKey = element.getContext() + "/" + element.getName();
+
+                    // 查找元素对应的图片
+                    String imagePath = findElementImage(element);
+                    if (imagePath != null) {
+                        imageMap.put(elementKey, imagePath);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return imageMap;
+    }
+
+    /**
+     * 更新元素信息
+     * <p>
+     * 接收前端提交的元素更新信息，更新YAML配置文件中的元素定义
+     * </p>
+     * 
+     * @param elementUpdate 包含元素原始信息和更新信息的请求体
+     * @return 更新结果，包含成功状态和可能的错误信息
+     */
+    @PostMapping("/elements/update")
+    public Map<String, Object> updateElement(@RequestBody Map<String, String> elementUpdate) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // 获取原始元素信息和更新后的信息
+            String originalContext = elementUpdate.get("originalContext");
+            String originalName = elementUpdate.get("originalName");
+            String newContext = elementUpdate.get("context");
+            String newName = elementUpdate.get("name").replace("_", "");
+            String selector = elementUpdate.get("cssSelector");
+            String xpath = elementUpdate.get("xpath");
+
+            // 读取YAML文件中的元素配置
+            Constructor constructor = new Constructor(ElementMappings.class);
+            Yaml yaml = new Yaml(constructor);
+            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+
+            boolean updated = false;
+            if (mappings != null && mappings.getConfigs() != null) {
+                for (ElementConfig element : mappings.getConfigs()) {
+                    if (element.getContext().equals(originalContext) &&
+                            element.getName().equals(originalName)) {
+                        // 更新元素信息
+                        element.setContext(newContext);
+                        element.setName(newName);
+                        element.setCssSelector(selector);
+                        element.setXpath(xpath);
+
+                        String newImagePath = "images/" + newContext + "/" + elementUpdate.get("name") + ".jpg";
+
+                        // 如果名称变了，要更改文件名以及yaml的imagePath
+                        if (!newName.equals(originalName)) {
+                            Path oldImagePath = Paths.get(resourcesPath, element.getImagePath());
+                            // 将原始名称的图片文件重命名为新名称
+                            String newPath = oldImagePath.getParent().resolve(elementUpdate.get("name") + ".jpg").toString();
+                            Files.move(oldImagePath, Paths.get(newPath), StandardCopyOption.REPLACE_EXISTING);
+                            // 更新元素的图片路径
+                            element.setImagePath(newImagePath);
+                        }
+
+                        if (!newContext.equals(originalContext)) {
+                            // 如果上下文变了，图片的位置要变
+                            String oldImagePath = element.getImagePath();
+
+                            // // 构造新的图片路径
+                            // String filename = oldImagePath.substring(oldImagePath.lastIndexOf('/') + 1);
+                            // newImagePath = "images/" + newContext + "/" + filename;
+
+                            // 确保目标目录存在
+                            File targetDir = new File(IMAGES_DIR + "/" + newContext);
+                            if (!targetDir.exists()) {
+                                targetDir.mkdirs();
+                            }
+
+                            // 移动文件
+                            File sourceFile = new File(IMAGES_DIR + "/" + oldImagePath.substring(7)); // 去掉"images/"前缀
+                            File targetFile = new File(IMAGES_DIR + "/" + newImagePath.substring(7));
+
+                            if (sourceFile.exists()) {
+                                try {
+                                    Files.move(sourceFile.toPath(), targetFile.toPath(),
+                                            StandardCopyOption.REPLACE_EXISTING);
+                                    // 更新元素的图片路径
+                                    element.setImagePath(newImagePath);
+                                } catch (IOException e) {
+                                    throw new RuntimeException("移动图片文件失败: " + e.getMessage(), e);
+                                }
+                            }
+                        }
+                        updated = true;
+                        break;
+                    }
+                }
+
+                if (updated) {
+                    // 写回YAML文件
+                    saveElementMappings(mappings);
+                    ElementLocatorFactory.init(); // 更新全局配置
+                    response.put("success", true);
+                } else {
+                    response.put("success", false);
+                    response.put("error", "未找到指定元素");
+                }
+            } else {
+                response.put("success", false);
+                response.put("error", "元素配置为空");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
+
+        return response;
+    }
+
+    /**
+     * 删除元素
+     * <p>
+     * 从YAML配置文件中删除指定元素
+     * </p>
+     * 
+     * @param elementInfo 包含要删除元素的上下文和名称的请求体
+     * @return 删除结果，包含成功状态和可能的错误信息
+     */
+    @PostMapping("/elements/delete")
+    public Map<String, Object> deleteElement(@RequestBody Map<String, String> elementInfo) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            String context = elementInfo.get("context");
+            String name = elementInfo.get("name");
+
+            // 读取YAML文件中的元素配置
+            Constructor constructor = new Constructor(ElementMappings.class);
+            Yaml yaml = new Yaml(constructor);
+            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+
+            boolean deleted = false;
+            String imagePathToDelete = null;
+
+            if (mappings != null && mappings.getConfigs() != null) {
+                Iterator<ElementConfig> iterator = mappings.getConfigs().iterator();
+                while (iterator.hasNext()) {
+                    ElementConfig element = iterator.next();
+                    if (element.getContext().equals(context) &&
+                            element.getName().equals(name)) {
+                        // 保存图片路径以便后续删除
+                        imagePathToDelete = element.getImagePath();
+                        // 删除元素
+                        iterator.remove();
+                        deleted = true;
+                        break;
+                    }
+                }
+
+                if (deleted) {
+                    // 写回YAML文件
+                    saveElementMappings(mappings);
+                    // 删除图片文件
+                    if (imagePathToDelete != null) {
+                        // 获取图片文件的完整路径
+                        Path imagePath = Paths.get(resourcesPath, imagePathToDelete);
+                        try {
+                            Files.deleteIfExists(imagePath);
+                            System.out.println("已删除图片文件: " + imagePath);
+                        } catch (IOException e) {
+                            System.err.println("删除图片文件失败: " + e.getMessage());
+                            // 即使图片删除失败，我们仍然认为元素删除成功
+                        }
+                    }
+                    ElementLocatorFactory.init(); // 更新全局配置
+                    response.put("success", true);
+                } else {
+                    response.put("success", false);
+                    response.put("error", "未找到指定元素");
+                }
+            } else {
+                response.put("success", false);
+                response.put("error", "元素配置为空");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
+
+        return response;
+    }
+
+    /**
+     * 查找元素对应的图片路径
+     * <p>
+     * 根据元素信息，查找对应的预览图片
+     * </p>
+     * 
+     * @param element 元素配置
+     * @return 图片相对路径，如果没有找到返回null
+     */
+    private String findElementImage(ElementConfig element) {
+        return element.getImagePath();
+    }
+
+    /**
+     * 保存元素映射到YAML文件
+     * <p>
+     * 将元素配置写回YAML文件
+     * </p>
+     * 
+     * @param mappings 元素映射配置
+     * @throws IOException 如果写入文件失败
+     */
+    private void saveElementMappings(ElementMappings mappings) throws IOException {
+        try {
+            // 设置YAML输出选项
+            DumperOptions options = new DumperOptions();
+            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+            options.setPrettyFlow(true);
+            options.setIndent(2);
+
+            // 创建一个干净的数据结构，不包含类型信息
+            Map<String, Object> yamlData = new LinkedHashMap<>();
+            yamlData.put("defaultLocatorType", "image");
+
+            List<Map<String, String>> cleanConfigs = new ArrayList<>();
+            for (ElementConfig config : mappings.getConfigs()) {
+                Map<String, String> cleanConfig = new LinkedHashMap<>();
+                cleanConfig.put("name", config.getName());
+                cleanConfig.put("context", config.getContext());
+                cleanConfig.put("imagePath", config.getImagePath());
+                cleanConfig.put("xpath", config.getXpath() != null ? config.getXpath() : "");
+                cleanConfig.put("cssSelector", config.getCssSelector() != null ? config.getCssSelector() : "");
+                cleanConfig.put("locatorType", config.getLocatorType());
+                cleanConfigs.add(cleanConfig);
+            }
+
+            yamlData.put("configs", cleanConfigs);
+
+            // 使用手动序列化避免类型标记
+            StringBuilder yaml = new StringBuilder();
+            yaml.append("defaultLocatorType: \"").append(yamlData.get("defaultLocatorType")).append("\"\n");
+            yaml.append("configs:\n");
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> configs = (List<Map<String, String>>) yamlData.get("configs");
+
+            for (Map<String, String> config : configs) {
+                yaml.append("  - name: \"").append(config.get("name")).append("\"\n");
+                yaml.append("    context: \"").append(config.get("context")).append("\"\n");
+                yaml.append("    imagePath: \"").append(config.get("imagePath")).append("\"\n");
+                yaml.append("    xpath: \"").append(config.get("xpath")).append("\"\n");
+                yaml.append("    cssSelector: \"").append(config.get("cssSelector")).append("\"\n");
+                yaml.append("    locatorType: \"").append(config.get("locatorType")).append("\"\n");
+            }
+
+            // 写入文件
+            try (FileWriter writer = new FileWriter(YAML_FILE)) {
+                writer.write(yaml.toString());
+            }
+        } catch (Exception e) {
+            throw new IOException("保存元素映射时出错: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/element/image")
+    public ResponseEntity<Resource> getElementImage(@RequestParam String path) {
+        try {
+            // 日志记录请求路径
+            System.out.println("请求的图片路径: " + path);
+
+            Path imagePath;
+            // 检查是否包含 resources 目录
+            if (path.contains("resources")) {
+                imagePath = Paths.get(path);
+            } else {
+                // 根据实际结构调整路径
+                imagePath = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", path);
+            }
+
+            System.out.println("完整图片路径: " + imagePath);
+
+            Resource resource = new FileSystemResource(imagePath.toFile());
+
+            if (resource.exists()) {
+                // 根据文件扩展名确定媒体类型
+                String contentType = determineContentType(path);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .body(resource);
+            } else {
+                System.err.println("图片不存在: " + imagePath);
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            e.printStackTrace(); // 添加日志以便调试
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // 根据文件扩展名确定内容类型
+    private String determineContentType(String path) {
+        if (path.toLowerCase().endsWith(".jpg") || path.toLowerCase().endsWith(".jpeg")) {
+            return "image/jpeg";
+        } else if (path.toLowerCase().endsWith(".png")) {
+            return "image/png";
+        } else if (path.toLowerCase().endsWith(".gif")) {
+            return "image/gif";
+        } else {
+            return "application/octet-stream";
+        }
+    }
+
+    @PostMapping("/elements/update-image")
+    public ResponseEntity<Map<String, Object>> updateElementImage(
+            @RequestParam("image") MultipartFile image,
+            @RequestParam("context") String context,
+            @RequestParam("name") String name) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // 读取YAML文件中的元素配置
+            Constructor constructor = new Constructor(ElementMappings.class);
+            Yaml yaml = new Yaml(constructor);
+            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+
+            boolean updated = false;
+            if (mappings != null && mappings.getConfigs() != null) {
+                for (ElementConfig element : mappings.getConfigs()) {
+                    if (element.getContext().equals(context) &&
+                            element.getName().equals(name.replace("_", ""))) {
+                        // 更新元素信息
+                        String filename = image.getOriginalFilename();
+
+                        String imagePath = element.getImagePath();
+
+                        // 生成新的图片路径，保留原始目录但使用新文件名
+                        String directory = imagePath.substring(0, imagePath.lastIndexOf("/") + 1);
+                        String newImagePath = directory + name + ".jpg";
+                        element.setImagePath(newImagePath);
+
+                        // 使用新文件路径保存上传的图片
+                        Path filePath = Paths.get(resourcesPath, newImagePath);
+                        Files.createDirectories(filePath.getParent()); // 确保目录存在
+                        Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                        updated = true;
+                        break;
+                    }
+                }
+
+                if (updated) {
+                    // 写回YAML文件
+                    saveElementMappings(mappings);
+                    ElementLocatorFactory.init(); // 更新全局配置
+                    response.put("success", true);
+                } else {
+                    response.put("success", false);
+                    response.put("error", "未找到指定元素");
+                }
+            } else {
+                response.put("success", false);
+                response.put("error", "元素配置为空");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
+
+        return ResponseEntity.ok(response);
+
+    }
+
+    /**
+     * 创建新元素
+     * <p>
+     * 将新元素添加到YAML配置文件中
+     * </p>
+     * 
+     * @param elementData 包含新元素数据的请求体
+     * @return 创建结果，包含成功状态和可能的错误信息
+     */
+    @PostMapping("/elements/create")
+    public Map<String, Object> createElement(@RequestBody Map<String, Object> elementData) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            MultipartFile image = (MultipartFile) elementData.get("image");
+            String context = (String) elementData.get("context");
+            String name = ((String) elementData.get("name")).replace("_", "");
+            String selector = (String) elementData.get("cssSelector");
+            String xpath = (String) elementData.get("xpath");
+            String locatorType = elementData.get("locatorType") != null ? (String) elementData.get("locatorType") : "image";
+
+            // 读取YAML文件中的元素配置
+            Constructor constructor = new Constructor(ElementMappings.class);
+            Yaml yaml = new Yaml(constructor);
+            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+
+            // 检查元素是否已存在
+            boolean exists = false;
+            if (mappings != null && mappings.getConfigs() != null) {
+                for (ElementConfig element : mappings.getConfigs()) {
+                    if (element.getContext().equals(context) && element.getName().equals(name)) {
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (exists) {
+                response.put("success", false);
+                response.put("error", "元素已存在");
+                return response;
+            }
+
+            // 创建新元素
+            ElementConfig newElement = new ElementConfig();
+            newElement.setContext(context);
+            newElement.setName(name);
+            newElement.setCssSelector(selector);
+            newElement.setXpath(xpath);
+            newElement.setLocatorType(locatorType);
+
+            // 默认图片路径，后续可通过update-image更新
+            String defaultImagePath = "images/" + context + "/" + name + ".jpg";
+            newElement.setImagePath(defaultImagePath);
+
+            // 确保目标目录存在
+            File targetDir = new File(IMAGES_DIR + "/" + context);
+            if (!targetDir.exists()) {
+                targetDir.mkdirs();
+            }
+
+            // 添加到映射列表
+            if (mappings.getConfigs() == null) {
+                mappings.setConfigs(new ArrayList<>());
+            }
+            mappings.getConfigs().add(newElement);
+
+            // 写回YAML文件
+            saveElementMappings(mappings);
+            ElementLocatorFactory.init(); // 更新全局配置
+
+            response.put("success", true);
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
+
+        return response;
     }
 }

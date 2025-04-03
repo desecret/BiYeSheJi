@@ -11,4 +11,10 @@ public class staticString {
         public static final String IMAGES_BASE_DIR = "src/main/resources/images/";
         public static final String CONFIG_FILE = "src/main/resources/element-mappings.yaml";
 
+        public static final String CASES_DIR = "src/main/java/org/example/server/cases/";
+
+        public static final String UPLOAD_DIR = "src/main/resources/uploadImages/";
+
+        public static final String resourcesPath = "src/main/resources/";
+
 }
