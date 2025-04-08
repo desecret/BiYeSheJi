@@ -1,20 +1,22 @@
 package org.example.server.util;
 
 import org.example.server.config.ElementConfig;
+import org.example.server.config.ElementMappings;
 import org.example.server.handler.ActionHandler;
 import org.example.server.handler.ActionHandlerRegistry;
 import org.example.server.handler.GenericActionHandler;
+import org.yaml.snakeyaml.DumperOptions;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-import static org.example.server.staticString.IMAGES_DIR;
-import static org.example.server.staticString.YAML_FILE;
+import static org.example.server.staticString.*;
 
 public class util {
 
@@ -159,13 +161,132 @@ public class util {
                     String[] parts = filename.split("_");
                     if (parts.length >= 2) {
                         // 从文件名提取显示名称
-                        String displayName = parts[0] + parts[1];
+                        String displayName = parts[0] + " " + parts[1];
                         ElementConfig config = new ElementConfig(displayName, imagePath);
                         config.setContext(context); // 设置context
                         configs.add(config);
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 查找元素对应的图片路径
+     * <p>
+     * 根据元素信息，查找对应的预览图片
+     * </p>
+     *
+     * @param element 元素配置
+     * @return 图片相对路径，如果没有找到返回null
+     */
+    public static String findElementImage(ElementConfig element) {
+        return element.getImagePath();
+    }
+
+    /**
+     * 保存元素映射到YAML文件
+     * <p>
+     * 将元素配置写回YAML文件
+     * </p>
+     *
+     * @param mappings 元素映射配置
+     * @throws IOException 如果写入文件失败
+     */
+    public static void saveElementMappings(ElementMappings mappings) throws IOException {
+        try {
+            // 设置YAML输出选项
+            DumperOptions options = new DumperOptions();
+            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+            options.setPrettyFlow(true);
+            options.setIndent(2);
+
+            // 创建一个干净的数据结构，不包含类型信息
+            Map<String, Object> yamlData = new LinkedHashMap<>();
+            yamlData.put("defaultLocatorType", "image");
+
+            List<Map<String, String>> cleanConfigs = new ArrayList<>();
+            for (ElementConfig config : mappings.getConfigs()) {
+                Map<String, String> cleanConfig = new LinkedHashMap<>();
+                cleanConfig.put("name", config.getName());
+                cleanConfig.put("context", config.getContext());
+                cleanConfig.put("imagePath", config.getImagePath());
+                cleanConfig.put("xpath", config.getXpath() != null ? config.getXpath() : "");
+                cleanConfig.put("cssSelector", config.getCssSelector() != null ? config.getCssSelector() : "");
+                cleanConfig.put("locatorType", config.getLocatorType());
+                cleanConfigs.add(cleanConfig);
+            }
+
+            yamlData.put("configs", cleanConfigs);
+
+            // 使用手动序列化避免类型标记
+            StringBuilder yaml = new StringBuilder();
+            yaml.append("defaultLocatorType: \"").append(yamlData.get("defaultLocatorType")).append("\"\n");
+            yaml.append("configs:\n");
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, String>> configs = (List<Map<String, String>>) yamlData.get("configs");
+
+            for (Map<String, String> config : configs) {
+                yaml.append("  - name: \"").append(config.get("name")).append("\"\n");
+                yaml.append("    context: \"").append(config.get("context")).append("\"\n");
+                yaml.append("    imagePath: \"").append(config.get("imagePath")).append("\"\n");
+                yaml.append("    xpath: \"").append(config.get("xpath")).append("\"\n");
+                yaml.append("    cssSelector: \"").append(config.get("cssSelector")).append("\"\n");
+                yaml.append("    locatorType: \"").append(config.get("locatorType")).append("\"\n");
+            }
+
+            // 写入文件
+            try (FileWriter writer = new FileWriter(YAML_FILE)) {
+                writer.write(yaml.toString());
+            }
+        } catch (Exception e) {
+            throw new IOException("保存元素映射时出错: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 确定文件的内容类型
+     *
+     * @param path 文件路径
+     * @return 内容类型
+     */
+    public static String determineContentType(String path) {
+        if (path.toLowerCase().endsWith(".jpg") || path.toLowerCase().endsWith(".jpeg")) {
+            return "image/jpeg";
+        } else if (path.toLowerCase().endsWith(".png")) {
+            return "image/png";
+        } else if (path.toLowerCase().endsWith(".gif")) {
+            return "image/gif";
+        } else {
+            return "application/octet-stream";
+        }
+    }
+
+
+    public static String runTaguiCommand() {
+        try {
+            // 使用cmd /c来执行命令
+            ProcessBuilder processBuilder = new ProcessBuilder("cmd", "/c", "tagui", TAGUI_SCRIPT_PATH);
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) { // 使用GBK编码处理中文输出
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new IOException("TagUI命令执行失败，退出代码: " + exitCode);
+            }
+
+            return output.toString();
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("执行TagUI命令时出错: " + e.getMessage(), e);
         }
     }
 }

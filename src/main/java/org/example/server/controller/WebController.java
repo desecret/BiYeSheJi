@@ -4,9 +4,7 @@ import org.example.server.Init;
 import org.example.server.config.ElementConfig;
 import org.example.server.config.ElementMappings;
 import org.example.server.locator.ElementLocatorFactory;
-import org.example.server.rules.CommandGenerator;
-import org.example.server.rules.RulesRegistry;
-import org.springframework.core.io.ClassPathResource;
+import org.example.server.util.util;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -15,12 +13,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
-import org.yaml.snakeyaml.DumperOptions;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,7 +26,7 @@ import java.util.*;
 
 import static org.example.server.staticString.*;
 import static org.example.server.util.httpRequest.uploadImagesAndProcessResponse;
-import static org.example.server.util.util.writeToYaml;
+import static org.example.server.util.util.*;
 
 /**
  * Web控制器，提供自动化测试系统的API接口
@@ -97,7 +93,10 @@ public class WebController {
             String[] lines = content.split("\n");
             for (String line : lines) {
                 Map<String, Object> step = new HashMap<>();
-                if (line.startsWith("点击")) {
+                if (line.startsWith("全屏")) {
+                    step.put("type", "全屏");
+                    step.put("content", "");
+                } else if (line.startsWith("点击")) {
                     step.put("type", "点击");
                     step.put("content", line.substring(2));
                 } else if (line.startsWith("右键点击")) {
@@ -142,10 +141,10 @@ public class WebController {
                 } else if (line.startsWith("输出")) {
                     step.put("type", "输出");
                     // 提取引号中的内容
-                    String outputContent = line.substring(3);
-                    if (outputContent.startsWith("\"") && outputContent.endsWith("\"")) {
-                        outputContent = outputContent.substring(1, outputContent.length() - 1);
-                    }
+                    String outputContent = line.substring(2);
+//                    if (outputContent.startsWith("\"") && outputContent.endsWith("\"")) {
+//                        outputContent = outputContent.substring(1, outputContent.length() - 1);
+//                    }
                     step.put("content", outputContent);
                 } else if (line.startsWith("如果")) {
                     step.put("type", "如果");
@@ -198,6 +197,7 @@ public class WebController {
     @GetMapping("/actions")
     public List<String> getActions() {
         List<String> actions = new ArrayList<>();
+        actions.add("全屏");
         actions.add("点击");
         actions.add("右键点击");
         actions.add("双击");
@@ -260,6 +260,9 @@ public class WebController {
             String contentStr = (String) step.get("content");
 
             switch (type) {
+                case "全屏":
+                    content.append("全屏\n");
+                    break;
                 case "点击":
                     content.append("点击").append(contentStr).append("\n");
                     break;
@@ -279,10 +282,10 @@ public class WebController {
                     content.append("在当前鼠标位置，弹起鼠标左键\n");
                     break;
                 case "等待":
-                    content.append("等待").append(contentStr).append("秒\n");
+                    content.append("等待").append(contentStr).append("\n");
                     break;
                 case "设置自动等待":
-                    content.append("设置自动等待").append(contentStr).append("秒\n");
+                    content.append("设置自动等待").append(contentStr).append("\n");
                     break;
                 case "在":
                     content.append("在").append(contentStr).append("\n");
@@ -297,7 +300,7 @@ public class WebController {
                     content.append(contentStr).append("存在\n");
                     break;
                 case "输出":
-                    content.append("输出\"").append(contentStr).append("\"\n");
+                    content.append("输出").append(contentStr).append("\n");
                     break;
                 case "如果":
                     content.append("如果").append(contentStr).append("\n");
@@ -318,7 +321,7 @@ public class WebController {
      * <p>
      * 接收前端提交的测试步骤，将其转换为标准命令格式并执行，返回执行结果日志
      * </p>
-     * 
+     *
      * @param request 包含测试步骤的请求体
      * @return 测试执行日志
      */
@@ -332,13 +335,29 @@ public class WebController {
             String type = (String) step.get("type");
             String content = (String) step.get("content");
 
-            testCases.append(type).append(content).append("\n");
+            if (type.equals("全屏")) {
+                testCases.append("全屏\n");
+            } else {
+                testCases.append(type).append(content).append("\n");
+            }
+
+
         }
         try {
             List<String> commands = Init.runTestCase(testCases.toString());
             if (commands != null) {
                 logs.add("执行命令: " + commands);
             }
+
+            // 执行命令文件
+            String res = util.runTaguiCommand();
+            // 处理编码问题
+//            byte[] bytes = res.getBytes(StandardCharsets.ISO_8859_1);
+//            String utf8Result = new String(bytes, StandardCharsets.UTF_8);
+//            System.out.println("执行结果: " + utf8Result);
+//            logs.add("执行结果: " + utf8Result);
+            logs.add("执行结果" + res);
+            System.out.println("执行结果: " + res);
         } catch (Exception e) {
             logs.add("错误: " + e.getMessage());
         }
@@ -441,7 +460,7 @@ public class WebController {
             String originalContext = elementUpdate.get("originalContext");
             String originalName = elementUpdate.get("originalName");
             String newContext = elementUpdate.get("context");
-            String newName = elementUpdate.get("name").replace("_", "");
+            String newName = elementUpdate.get("name").replace("_", " ");
             String selector = elementUpdate.get("cssSelector");
             String xpath = elementUpdate.get("xpath");
 
@@ -461,13 +480,13 @@ public class WebController {
                         element.setCssSelector(selector);
                         element.setXpath(xpath);
 
-                        String newImagePath = "images/" + newContext + "/" + elementUpdate.get("name") + ".jpg";
+                        String newImagePath = "images/" + newContext + "/" + elementUpdate.get("name") + ".png";
 
                         // 如果名称变了，要更改文件名以及yaml的imagePath
                         if (!newName.equals(originalName)) {
                             Path oldImagePath = Paths.get(resourcesPath, element.getImagePath());
                             // 将原始名称的图片文件重命名为新名称
-                            String newPath = oldImagePath.getParent().resolve(elementUpdate.get("name") + ".jpg").toString();
+                            String newPath = oldImagePath.getParent().resolve(elementUpdate.get("name") + ".png").toString();
                             Files.move(oldImagePath, Paths.get(newPath), StandardCopyOption.REPLACE_EXISTING);
                             // 更新元素的图片路径
                             element.setImagePath(newImagePath);
@@ -604,79 +623,14 @@ public class WebController {
     }
 
     /**
-     * 查找元素对应的图片路径
+     * 获取元素图片
      * <p>
-     * 根据元素信息，查找对应的预览图片
+     * 根据请求参数返回指定元素的图片资源
      * </p>
-     * 
-     * @param element 元素配置
-     * @return 图片相对路径，如果没有找到返回null
+     *
+     * @param path 图片路径
+     * @return 图片资源
      */
-    private String findElementImage(ElementConfig element) {
-        return element.getImagePath();
-    }
-
-    /**
-     * 保存元素映射到YAML文件
-     * <p>
-     * 将元素配置写回YAML文件
-     * </p>
-     * 
-     * @param mappings 元素映射配置
-     * @throws IOException 如果写入文件失败
-     */
-    private void saveElementMappings(ElementMappings mappings) throws IOException {
-        try {
-            // 设置YAML输出选项
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            options.setPrettyFlow(true);
-            options.setIndent(2);
-
-            // 创建一个干净的数据结构，不包含类型信息
-            Map<String, Object> yamlData = new LinkedHashMap<>();
-            yamlData.put("defaultLocatorType", "image");
-
-            List<Map<String, String>> cleanConfigs = new ArrayList<>();
-            for (ElementConfig config : mappings.getConfigs()) {
-                Map<String, String> cleanConfig = new LinkedHashMap<>();
-                cleanConfig.put("name", config.getName());
-                cleanConfig.put("context", config.getContext());
-                cleanConfig.put("imagePath", config.getImagePath());
-                cleanConfig.put("xpath", config.getXpath() != null ? config.getXpath() : "");
-                cleanConfig.put("cssSelector", config.getCssSelector() != null ? config.getCssSelector() : "");
-                cleanConfig.put("locatorType", config.getLocatorType());
-                cleanConfigs.add(cleanConfig);
-            }
-
-            yamlData.put("configs", cleanConfigs);
-
-            // 使用手动序列化避免类型标记
-            StringBuilder yaml = new StringBuilder();
-            yaml.append("defaultLocatorType: \"").append(yamlData.get("defaultLocatorType")).append("\"\n");
-            yaml.append("configs:\n");
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, String>> configs = (List<Map<String, String>>) yamlData.get("configs");
-
-            for (Map<String, String> config : configs) {
-                yaml.append("  - name: \"").append(config.get("name")).append("\"\n");
-                yaml.append("    context: \"").append(config.get("context")).append("\"\n");
-                yaml.append("    imagePath: \"").append(config.get("imagePath")).append("\"\n");
-                yaml.append("    xpath: \"").append(config.get("xpath")).append("\"\n");
-                yaml.append("    cssSelector: \"").append(config.get("cssSelector")).append("\"\n");
-                yaml.append("    locatorType: \"").append(config.get("locatorType")).append("\"\n");
-            }
-
-            // 写入文件
-            try (FileWriter writer = new FileWriter(YAML_FILE)) {
-                writer.write(yaml.toString());
-            }
-        } catch (Exception e) {
-            throw new IOException("保存元素映射时出错: " + e.getMessage(), e);
-        }
-    }
-
     @GetMapping("/element/image")
     public ResponseEntity<Resource> getElementImage(@RequestParam String path) {
         try {
@@ -712,19 +666,17 @@ public class WebController {
         }
     }
 
-    // 根据文件扩展名确定内容类型
-    private String determineContentType(String path) {
-        if (path.toLowerCase().endsWith(".jpg") || path.toLowerCase().endsWith(".jpeg")) {
-            return "image/jpeg";
-        } else if (path.toLowerCase().endsWith(".png")) {
-            return "image/png";
-        } else if (path.toLowerCase().endsWith(".gif")) {
-            return "image/gif";
-        } else {
-            return "application/octet-stream";
-        }
-    }
-
+    /**
+     * 更新元素图片
+     * <p>
+     * 接收上传的图片文件，更新指定元素的图片路径
+     * </p>
+     *
+     * @param image 上传的图片文件
+     * @param context 元素上下文
+     * @param name 元素名称
+     * @return 更新结果，包含成功状态和可能的错误信息
+     */
     @PostMapping("/elements/update-image")
     public ResponseEntity<Map<String, Object>> updateElementImage(
             @RequestParam("image") MultipartFile image,
@@ -743,7 +695,7 @@ public class WebController {
             if (mappings != null && mappings.getConfigs() != null) {
                 for (ElementConfig element : mappings.getConfigs()) {
                     if (element.getContext().equals(context) &&
-                            element.getName().equals(name.replace("_", ""))) {
+                            element.getName().equals(name.replace("_", " "))) {
                         // 更新元素信息
                         String filename = image.getOriginalFilename();
 
@@ -751,7 +703,7 @@ public class WebController {
 
                         // 生成新的图片路径，保留原始目录但使用新文件名
                         String directory = imagePath.substring(0, imagePath.lastIndexOf("/") + 1);
-                        String newImagePath = directory + name + ".jpg";
+                        String newImagePath = directory + name + ".png";
                         element.setImagePath(newImagePath);
 
                         // 使用新文件路径保存上传的图片
@@ -804,7 +756,7 @@ public class WebController {
         try {
             MultipartFile image = (MultipartFile) elementData.get("image");
             String context = (String) elementData.get("context");
-            String name = ((String) elementData.get("name")).replace("_", "");
+            String name = ((String) elementData.get("name")).replace("_", " ");
             String selector = (String) elementData.get("cssSelector");
             String xpath = (String) elementData.get("xpath");
             String locatorType = elementData.get("locatorType") != null ? (String) elementData.get("locatorType") : "image";
@@ -840,7 +792,7 @@ public class WebController {
             newElement.setLocatorType(locatorType);
 
             // 默认图片路径，后续可通过update-image更新
-            String defaultImagePath = "images/" + context + "/" + name + ".jpg";
+            String defaultImagePath = "images/" + context + "/" + name + ".png";
             newElement.setImagePath(defaultImagePath);
 
             // 确保目标目录存在

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="smart-doc">
+    <title>server</title>
+    <link rel="stylesheet" href="font.css">
+    <link rel="stylesheet" href="AllInOne.css?v=1743701557670"/>
+    
+    <style>.literalblock pre, .listingblock pre:not(.highlight), .listingblock pre[class="highlight"], .listingblock pre[class^="highlight "], .listingblock pre.CodeRay, .listingblock pre.prettyprint {
+        background: #f7f7f8;
+    }
+
+    .hljs {
+        padding: 0em;
+    }</style>
+    <script src="highlight.min.js"></script>
+    <script src="jquery.min.js"></script>
+</head>
+<body class="book toc2 toc-left">
+<div id="header"><h1>server</h1>
+    <div id="toc" class="toc2">
+        <div id="book-search-input"><input id="search" type="text" placeholder="Type to search"></div>
+        <div id="toctitle"><span>API Reference</span></div>
+        <ul id="accordion" class="sectlevel1">
+            <li class=""><a class="dd" href="api.html#header">1.&nbsp;Web控制器，提供自动化测试系统的API接口<br>&amp;amp;lt;p&amp;amp;gt;<br>该控制器提供了测试用例管理、元素库访问和测试用例执行等功能的RESTful接口<br>&amp;amp;lt;/p&amp;amp;gt;</a>
+                <ul class="sectlevel2" style="display: none">
+                    <li><a
+                            href="api.html#9c08579f5984651c02503d35c17bd517">1.1.&nbsp;获取所有测试用例列表<br><br>该接口会扫描测试用例目录下的所有.txt文件，返回测试用例ID和名称<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#5dc50880383bddc4c96999fb6052db95">1.2.&nbsp;获取指定测试用例的详细内容<br><br>读取指定测试用例文件并解析其中的命令步骤，返回结构化的步骤列表<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#3d6b64dcea608f4e56d2c8fd091ce2f1">1.3.&nbsp;获取UI元素库<br><br>从YAML配置文件中读取元素映射配置，返回所有UI元素的列表<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#405308ac35a5589abc0bd82637af7b3c">1.4.&nbsp;获取所有可用的动作类型列表</a>
+                    </li>
+
+                    <li><a
+                            href="api.html#1b7e9b94794b61ee8c6f9846c8a9e9d1">1.5.&nbsp;获取按context分组的元素列表</a>
+                    </li>
+
+                    <li><a
+                            href="api.html#ec63315024d4b892aafedadaf5da5c43">1.6.&nbsp;保存测试用例<br><br>将前端提交的测试步骤保存为标准格式的测试用例文件<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#f8d0ac5a6fa7947ad4d931a13b1cf8b9">1.7.&nbsp;执行测试用例<br><br>接收前端提交的测试步骤，将其转换为标准命令格式并执行，返回执行结果日志<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#4c56b5b7e01af0d94fb17203cf748f30">1.8.&nbsp;处理图片上传，识别UI元素并更新元素库<br><br>该接口接收上传的图片，调用图像处理服务识别图片中的UI元素，<br>更新元素库配置文件，并返回处理结果<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#1ce1ee74567bce514fbc26d6edc6fba8">1.9.&nbsp;获取元素对应的图片路径映射<br><br>返回每个元素ID和其对应的图片URL或文件路径的映射关系<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#cd10ed26c1ac359c5c44e60857d32c17">1.10.&nbsp;更新元素信息<br><br>接收前端提交的元素更新信息，更新YAML配置文件中的元素定义<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#6ccdfb0dd5feab555f71b2f2f5867c19">1.11.&nbsp;删除元素<br><br>从YAML配置文件中删除指定元素<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#03f1bfd2487c32e7ebcf00ce0489a94c">1.12.&nbsp;获取元素图片<br><br>根据请求参数返回指定元素的图片资源<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#abaa2ba49809dc57c48b4a986687a398">1.13.&nbsp;更新元素图片<br><br>接收上传的图片文件，更新指定元素的图片路径<br> </a>
+                    </li>
+
+                    <li><a
+                            href="api.html#d44dd474722745766153d985786ee68d">1.14.&nbsp;创建新元素<br><br>将新元素添加到YAML配置文件中<br> </a>
+                    </li>
+                </ul>
+            </li>
+            <li class="open"><a class="dd" href="BasicController.html#header">2.&nbsp;</a>
+                <ul class="sectlevel2" style="display: block">
+                    <li><a
+                            href="BasicController.html#f969a9a99d8a8116fdde46aed1b0f1ba">2.1.&nbsp;</a>
+                    </li>
+
+                    <li><a
+                            href="BasicController.html#188e93f1dcde9fb64858e3e4dccb1335">2.2.&nbsp;</a>
+                    </li>
+
+                    <li><a
+                            href="BasicController.html#e180d7f396f81de5e8cb2d0c3fd3f346">2.3.&nbsp;</a>
+                    </li>
+
+                    <li><a
+                            href="BasicController.html#c92297711cac56cfa4010528070c82fa">2.4.&nbsp;</a>
+                    </li>
+                </ul>
+            </li>
+            <li class=""><a class="dd" href="PathVariableController.html#header">3.&nbsp;</a>
+                <ul class="sectlevel2" style="display: none">
+                    <li><a
+                            href="PathVariableController.html#4a80fe164205c38fce1fd512dfebd055">3.1.&nbsp;</a>
+                    </li>
+
+                    <li><a
+                            href="PathVariableController.html#de6a4410d3cb8fd5b826a5ab8825388a">3.2.&nbsp;</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</div>
+<div id="content">
+    <div class="sect1"><h2 id="_"><a class="anchor" href="#_"></a><a class="link" href="#_">2.&nbsp;</a>
+    </h2>
+        <div class="sectionbody">
+            <div class="sect2"><h3 id="f969a9a99d8a8116fdde46aed1b0f1ba">
+                <a class="anchor" href="#f969a9a99d8a8116fdde46aed1b0f1ba"></a>
+                <a class="link" href="#f969a9a99d8a8116fdde46aed1b0f1ba">2.1.&nbsp;</a>
+            </h3>
+                <div class="paragraph"><p><strong>URL:</strong><a href="/hello" class="bare">&nbsp;/hello</a>
+                </p></div>
+                <div class="paragraph"><p><strong>Type:</strong>&nbsp;GET</p></div>
+                <div class="paragraph"><p><strong>Author:</strong>&nbsp;<a href="mailto:chenxilzx1@gmail.com">theonefx</a></p></div>
+                <div class="paragraph"><p><strong>Content-Type:</strong>&nbsp;application/x-www-form-urlencoded</p></div>
+                <div class="paragraph"><p><strong>Description:</strong>&nbsp;</p></div>
+                <div class="paragraph"><p><strong>Query-parameters:</strong></p></div>
+                <table class="tableblock frame-all grid-all spread">
+                    <colgroup>
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th class="tableblock halign-left valign-top">Parameter</th>
+                        <th class="tableblock halign-left valign-top">Type</th>
+                        <th class="tableblock halign-left valign-top">Description</th>
+                        <th class="tableblock halign-left valign-top">Required</th>
+                        <th class="tableblock halign-left valign-top">Since</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">name</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">string</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">No comments found.</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="paragraph"><p><strong>Request-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="bash">curl -X GET -i '/hello?name=unknown user' --data '&unknown user'</code></pre>
+                    </div>
+                </div>
+                <div class="paragraph"><p><strong>Response-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="json">string</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sect2"><h3 id="188e93f1dcde9fb64858e3e4dccb1335">
+                <a class="anchor" href="#188e93f1dcde9fb64858e3e4dccb1335"></a>
+                <a class="link" href="#188e93f1dcde9fb64858e3e4dccb1335">2.2.&nbsp;</a>
+            </h3>
+                <div class="paragraph"><p><strong>URL:</strong><a href="/user" class="bare">&nbsp;/user</a>
+                </p></div>
+                <div class="paragraph"><p><strong>Type:</strong>&nbsp;GET</p></div>
+                <div class="paragraph"><p><strong>Author:</strong>&nbsp;<a href="mailto:chenxilzx1@gmail.com">theonefx</a></p></div>
+                <div class="paragraph"><p><strong>Content-Type:</strong>&nbsp;application/x-www-form-urlencoded</p></div>
+                <div class="paragraph"><p><strong>Description:</strong>&nbsp;</p></div>
+                <div class="paragraph"><p><strong>Request-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="bash">curl -X GET -i '/user'</code></pre>
+                    </div>
+                </div>
+                <div class="paragraph"><p><strong>Response-fields:</strong></p></div>
+                <table class="tableblock frame-all grid-all spread">
+                    <colgroup>
+                        <col style="width: 25%;">
+                        <col style="width: 25%;">
+                        <col style="width: 25%;">
+                        <col style="width: 25%;">
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th class="tableblock halign-left valign-top">Field</th>
+                        <th class="tableblock halign-left valign-top">Type</th>
+                        <th class="tableblock halign-left valign-top">Description</th>
+                        <th class="tableblock halign-left valign-top">Since</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">name</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">string</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">No comments found.</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+                    </tr>
+
+                    <tr>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">age</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">int32</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">No comments found.</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="paragraph"><p><strong>Response-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="json">{
+  "name": "",
+  "age": 0
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sect2"><h3 id="e180d7f396f81de5e8cb2d0c3fd3f346">
+                <a class="anchor" href="#e180d7f396f81de5e8cb2d0c3fd3f346"></a>
+                <a class="link" href="#e180d7f396f81de5e8cb2d0c3fd3f346">2.3.&nbsp;</a>
+            </h3>
+                <div class="paragraph"><p><strong>URL:</strong><a href="/save_user" class="bare">&nbsp;/save_user</a>
+                </p></div>
+                <div class="paragraph"><p><strong>Type:</strong>&nbsp;GET</p></div>
+                <div class="paragraph"><p><strong>Author:</strong>&nbsp;<a href="mailto:chenxilzx1@gmail.com">theonefx</a></p></div>
+                <div class="paragraph"><p><strong>Content-Type:</strong>&nbsp;application/x-www-form-urlencoded</p></div>
+                <div class="paragraph"><p><strong>Description:</strong>&nbsp;</p></div>
+                <div class="paragraph"><p><strong>Query-parameters:</strong></p></div>
+                <table class="tableblock frame-all grid-all spread">
+                    <colgroup>
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                    </colgroup>
+                    <thead>
+                    <tr>
+                        <th class="tableblock halign-left valign-top">Parameter</th>
+                        <th class="tableblock halign-left valign-top">Type</th>
+                        <th class="tableblock halign-left valign-top">Description</th>
+                        <th class="tableblock halign-left valign-top">Required</th>
+                        <th class="tableblock halign-left valign-top">Since</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">name</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">string</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">No comments found.</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+                    </tr>
+
+                    <tr>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">age</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">int32</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">No comments found.</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">false</p></td>
+                        <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="paragraph"><p><strong>Request-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="bash">curl -X GET -i '/save_user?age=0&name='</code></pre>
+                    </div>
+                </div>
+                <div class="paragraph"><p><strong>Response-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="json">string</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sect2"><h3 id="c92297711cac56cfa4010528070c82fa">
+                <a class="anchor" href="#c92297711cac56cfa4010528070c82fa"></a>
+                <a class="link" href="#c92297711cac56cfa4010528070c82fa">2.4.&nbsp;</a>
+            </h3>
+                <div class="paragraph"><p><strong>URL:</strong><a href="/html" class="bare">&nbsp;/html</a>
+                </p></div>
+                <div class="paragraph"><p><strong>Type:</strong>&nbsp;GET</p></div>
+                <div class="paragraph"><p><strong>Author:</strong>&nbsp;<a href="mailto:chenxilzx1@gmail.com">theonefx</a></p></div>
+                <div class="paragraph"><p><strong>Content-Type:</strong>&nbsp;application/x-www-form-urlencoded</p></div>
+                <div class="paragraph"><p><strong>Description:</strong>&nbsp;</p></div>
+                <div class="paragraph"><p><strong>Request-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="bash">curl -X GET -i '/html'</code></pre>
+                    </div>
+                </div>
+                <div class="paragraph"><p><strong>Response-example:</strong></p></div>
+                <div class="listingblock">
+                    <div class="content">
+                        <pre><code class="json">string</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="page-footer"><span class="copyright">Generated by smart-doc at 2025-04-04 01:32:37</span><span
+            class="footer-modification">Suggestions,contact,support and error reporting on<a
+            href="https://gitee.com/smart-doc-team/smart-doc" target="_blank">&nbsp;Gitee</a>&nbsp;or<a
+            href="https://github.com/smart-doc-group/smart-doc.git" target="_blank">&nbsp;Github</a></span></footer>
+</div>
+<script src="search.js?v=1743701557670"></script>
+<script>
+    $(function () {
+        const Accordion = function (el, multiple) {
+            this.el = el || {};
+            this.multiple = multiple || false;
+            const links = this.el.find('.dd');
+            links.on('click', {el: this.el, multiple: this.multiple}, this.dropdown);
+        };
+        Accordion.prototype.dropdown = function (e) {
+            const $el = e.data.el;
+            const $this = $(this), $next = $this.next();
+            $next.slideToggle();
+            $this.parent().toggleClass('open');
+            if (!e.data.multiple) {
+                $el.find('.submenu').not($next).slideUp("20").parent().removeClass('open');
+            }
+        };
+        new Accordion($('#accordion'), false);
+        hljs.highlightAll()
+    });
+</script>
+</body>
+</html>

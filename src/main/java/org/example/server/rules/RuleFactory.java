@@ -1,5 +1,6 @@
 package org.example.server.rules;
 
+import org.example.server.exception.RuleEngineException;
 import org.jeasy.rules.api.Rule;
 import org.jeasy.rules.core.BasicRule;
 
@@ -23,8 +24,12 @@ public class RuleFactory {
             }
 
             @Override
-            public void execute(org.jeasy.rules.api.Facts facts) throws Exception {
-                ruleAction.execute(facts);
+            public void execute(org.jeasy.rules.api.Facts facts) throws RuleEngineException {
+                try {
+                    ruleAction.execute(facts);
+                } catch (Exception e) {
+                    throw new RuleEngineException("执行规则失败", e);
+                }
             }
         };
     }

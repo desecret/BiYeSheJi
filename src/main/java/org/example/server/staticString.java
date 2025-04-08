@@ -3,7 +3,7 @@ package org.example.server;
 public class staticString {
 
         public static final String casePath = "src/main/java/org/example/server/cases/1.txt";
-        public static final String outputPath = "src/main/java/org/example/server/output/tagui_script.tag";
+        public static final String outputPath = "src/main/resources/tagui_script.tag";
         public static final String url = "http://localhost:5000/api/process";
         public static final String uploadImages = "src/main/resources/uploadImages";
         public static final String IMAGES_DIR = "src/main/resources/images"; // Adjust path if needed
@@ -16,5 +16,7 @@ public class staticString {
         public static final String UPLOAD_DIR = "src/main/resources/uploadImages/";
 
         public static final String resourcesPath = "src/main/resources/";
+
+        public static final String TAGUI_SCRIPT_PATH = "D:\\biyesheji\\Server\\server\\src\\main\\resources\\tagui_script.tag";
 
 }

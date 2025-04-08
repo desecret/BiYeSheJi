@@ -132,7 +132,7 @@ public class ActionHandlerRegistry {
                 })));
 
         handlers.add((new GenericActionHandler(
-                "输出\"(.*?)\"",
+                "输出(.*?)",
                 "echo",
                 matcher -> {
                     Map<String, Object> result = new HashMap<>();
@@ -148,6 +148,15 @@ public class ActionHandlerRegistry {
                     Map<String, Object> result = new HashMap<>();
                     result.put("condition", matcher.group(1));
                     result.put("result", matcher.group(2));
+                    return result;
+                }));
+
+        handlers.add(new GenericActionHandler(
+                "全屏",
+                "fullscreen",
+                matcher -> {
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("element", "fullscreen");
                     return result;
                 }));
 

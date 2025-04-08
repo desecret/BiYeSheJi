@@ -244,7 +244,7 @@ public class httpRequest {
                     String cleanText = text.replaceAll("[\\\\/:*?\"<>|]", "_");
 
                     // 创建文件名
-                    String filename = String.format("%s_%s_%d.jpg", cleanText, className, num);
+                    String filename = String.format("%s_%s_%d.png", cleanText, className, num);
 
                     // 保存图像
                     byte[] imageBytes = Base64.getDecoder().decode(base64Image);

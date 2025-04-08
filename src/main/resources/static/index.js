@@ -587,7 +587,10 @@ function addStep(stepData = null, stepNumber = null) {
         }
     });
 
+    console.log("添加步骤：", stepData);
     if (stepData) {
+        console.log("加载步骤数据：", stepData);
+
         actionSelect.value = stepData.type;
         stepItem.querySelector('.step-content').value = stepData.content;
 
@@ -604,10 +607,17 @@ function addStep(stepData = null, stepNumber = null) {
             }
         }// 如果是"如果"命令，解析内容到条件输入框
         else if (stepData.type === '如果' && stepData.content) {
+            // 所有可能的动作类型列表（除了"如果"以外）
+            const possibleActions = actions.filter(action => action !== '如果').join('|');
+
+            // 使用所有可能的动作类型构建正则表达式
+            const actionPattern = new RegExp(`(.+?)(存在|出现)，则(${possibleActions})(.+)`);
+
             // 匹配格式：如果[元素][条件]，则[动作][目标]
-            const match = stepData.content.match(/(.+?)(存在|出现)，则(.+?)(.+)/);
+            const match = stepData.content.match(actionPattern);
             if (match) {
                 const [_, element, condition, action, target] = match;
+                console.log("匹配到的内容：", match);
             
                 // 设置条件输入值
                 setTimeout(() => {
@@ -733,6 +743,8 @@ async function saveTestCase() {
             }
             
             content = `${conditionElement}${conditionType}，则${conditionAction}${actionContent}`;
+        } else if (type === '全屏') {
+            content = '全屏';
         } else {
             content = item.querySelector('.step-content').value;
 
@@ -770,6 +782,7 @@ async function saveTestCase() {
 
 // 运行测试用例
 async function runTestCase() {
+    console.log('运行测试用例...');
     const steps = [];
     document.querySelectorAll('.step-item').forEach(item => {
         const type = item.querySelector('.step-type').value;
@@ -803,6 +816,11 @@ async function runTestCase() {
             // 为等待和设置自动等待命令补充"秒"
             if ((type === '等待' || type === '设置自动等待') && !content.endsWith('秒')) {
                 content += '秒';
+            } else if (type === '输出') {
+                // 在内容两边加引号
+                content = `"${content}"`;
+                console.log("输出内容：", content);
+
             }
         }
 
@@ -827,24 +845,54 @@ async function runTestCase() {
         });
 
         const result = await response.json();
-        result.logs.forEach(log => {
-            const div = document.createElement('div');
-            div.className = 'log-item';
-            if (log.startsWith('错误:')) {
-                div.classList.add('error');
-            } else {
-                div.classList.add('success');
-            }
-            div.textContent = log;
-            resultsDiv.appendChild(div);
-            resultsDiv.scrollTop = resultsDiv.scrollHeight;
-        });
+
+        // 清空之前的结果
+        resultsDiv.innerHTML = '<div class="log-item">测试执行完成</div>';
+
+        // 根据执行结果添加状态标识
+        if (result.success === false) {
+            resultsDiv.innerHTML += `<div class="log-item error">执行失败 - 错误类型: ${result.errorType || '未知错误'}</div>`;
+        } else if (result.warning) {
+            resultsDiv.innerHTML += '<div class="log-item warning">执行完成，但有警告</div>';
+        } else {
+            resultsDiv.innerHTML += '<div class="log-item success">执行成功</div>';
+        }
+
+        // 显示所有日志
+        if (result.logs && result.logs.length > 0) {
+            resultsDiv.innerHTML += '<div class="log-title">详细日志:</div>';
+
+            result.logs.forEach(log => {
+                const div = document.createElement('div');
+                div.className = 'log-item';
+
+                // 根据日志内容设置样式
+                if (log.includes('错误:') || log.includes('执行错误') || log.includes('Error') || log.includes('Exception')) {
+                    div.classList.add('error');
+                } else if (log.includes('警告:') || log.includes('Warning')) {
+                    div.classList.add('warning');
+                } else if (log.includes('详细错误信息:') || log.includes('堆栈')) {
+                    div.classList.add('stack-trace');
+                } else {
+                    div.classList.add('info');
+                }
+
+                div.textContent = log;
+                resultsDiv.appendChild(div);
+            });
+        }
+
+        // 滚动到底部
+        resultsDiv.scrollTop = resultsDiv.scrollHeight;
     } catch (error) {
         console.error('运行测试用例失败:', error);
-        const div = document.createElement('div');
-        div.className = 'log-item error';
-        div.textContent = '运行失败: ' + error.message;
-        resultsDiv.appendChild(div);
+        resultsDiv.innerHTML = '<div class="log-item error">请求异常: 无法连接到服务器</div>';
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'log-item stack-trace';
+        errorDiv.textContent = error.message || '未知错误';
+        resultsDiv.appendChild(errorDiv);
+
         resultsDiv.scrollTop = resultsDiv.scrollHeight;
     }
 }
@@ -1049,8 +1097,9 @@ function openElementModal(element) {
     document.getElementById('editElementContext').value = element.context;
 
     // 拆分元素名称
-    const elementTypes = ['按钮', '复选框', '下拉框', '图标', '输入框', '标签', '单选框', '开关'];
-    let baseName = element.name;
+    // const elementTypes = ['按钮', '复选框', '下拉框', '图标', '输入框', '标签', '单选框', '开关'];
+    const elementTypes = ['button', 'checkbox', 'dropdown', 'icon', 'input', 'label', 'radio', 'switch']
+        let baseName = element.name;
     let elementType = '';
 
     // 检查元素名称是否以已知类型结尾
@@ -1289,7 +1338,7 @@ function openAddElementModal() {
         // 清空表单
         document.getElementById('newElementContext').value = '';
         document.getElementById('newElementBaseName').value = '';
-        document.getElementById('newElementType').value = '按钮';
+        document.getElementById('newElementType').value = 'button';
         document.getElementById('newElementSelector').value = '';
         document.getElementById('newElementXpath').value = '';
         document.getElementById('newElementPreviewImage').src = '';

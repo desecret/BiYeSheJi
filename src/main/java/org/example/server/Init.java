@@ -1,5 +1,6 @@
 package org.example.server;
 
+import org.example.server.util.util;
 import org.jeasy.rules.api.Facts;
 import org.jeasy.rules.api.Rules;
 import org.jeasy.rules.api.RulesEngine;
@@ -10,8 +11,11 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +50,7 @@ public class Init implements ApplicationRunner {
 
         writeToYaml();
         ElementLocatorFactory.init();
+//        System.out.println(util.runTaguiCommand());
     }
 
     private void init() {
@@ -81,57 +86,86 @@ public class Init implements ApplicationRunner {
     }
 
 
-    public static List<String> runTestCase(String testCase) {
+    public static List<String> runTestCase(String testCase) throws RuleEngineException {
+        List<String> logs = new ArrayList<>();
+
         if (testCase.trim().isEmpty()) {
-            throw new RuleEngineException("测试用例为空",
+            throw new RuleEngineException("测试用例为空", RuleEngineException.ErrorLevel.ERROR);
+        }
+
+        try {
+            // 2. 创建规则引擎
+            RulesEngineParameters params = new RulesEngineParameters()
+                    .skipOnFirstAppliedRule(true);
+            RulesEngine engine = new DefaultRulesEngine(params);
+
+            // 3. 注册规则
+            Rules rules = RulesRegistry.registerRules();
+
+            // 4. 清除之前可能存在的命令
+            RulesRegistry.clearCommands();
+            logs.add("初始化规则引擎完成");
+
+            // 5. 处理每个步骤
+            String[] steps = testCase.split("\n");
+            logs.add("开始处理测试步骤，共 " + steps.length + " 个步骤");
+
+            for (int i = 0; i < steps.length; i++) {
+                String step = steps[i];
+                try {
+                    logs.add("处理步骤 #" + (i + 1) + ": " + step);
+
+                    String[] parts = step.split("\\. ", 2);
+                    String stepContent = parts.length > 1 ? parts[1] : step;
+
+                    Map<String, Object> parsed = NlpParser.parseStep(stepContent);
+                    if (parsed.isEmpty()) {
+                        String warning = "无法解析步骤内容 #" + (i + 1) + ": " + stepContent;
+                        logs.add("警告: " + warning);
+                        ErrorHandler.logWarning(warning);
+                        continue;
+                    }
+
+                    Facts facts = new Facts();
+                    facts.put("action", parsed.get("action"));
+                    putToFact(facts, parsed, Arrays.asList("element", "value", "context", "condition", "result"));
+
+                    engine.fire(rules, facts);
+                    logs.add("步骤 #" + (i + 1) + " 执行完成");
+                } catch (Exception e) {
+                    String errorMsg = "处理步骤 #" + (i + 1) + " 时发生错误: " + e.getMessage();
+                    logs.add("错误: " + errorMsg);
+                    ErrorHandler.logError(errorMsg, e);
+
+                    // 捕获内部异常但不立即终止，继续处理其他步骤
+                    // 但记录下详细错误信息
+                    logs.add("详细错误信息: " + e.toString());
+                    StringWriter sw = new StringWriter();
+                    e.printStackTrace(new PrintWriter(sw));
+                    logs.add("堆栈: " + sw.toString());
+                }
+            }
+
+            // 6. 保存生成的命令到文件
+            RulesRegistry.saveCommandsToFile(outputPath);
+            logs.add("测试执行完成，命令已保存");
+
+            // 添加生成的命令到日志
+            logs.add("执行命令: " + RulesRegistry.getCommands());
+
+            return logs;
+        } catch (Exception e) {
+            logs.add("执行错误: " + e.getMessage());
+            // 记录详细的错误堆栈
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            logs.add("堆栈: " + sw.toString());
+
+            // 将捕获的异常包装为 RuleEngineException 重新抛出
+            throw new RuleEngineException("执行测试用例时发生错误: " + e.getMessage(),
+                    e,
                     RuleEngineException.ErrorLevel.ERROR);
         }
-
-        // 2. 创建规则引擎
-        RulesEngineParameters params = new RulesEngineParameters()
-                .skipOnFirstAppliedRule(true);
-        RulesEngine engine = new DefaultRulesEngine(params);
-
-        // 3. 注册规则
-        Rules rules = RulesRegistry.registerRules();
-
-        // 4. 清除之前可能存在的命令
-        RulesRegistry.clearCommands();
-
-        // 5. 处理每个步骤
-        String[] steps = testCase.split("\n");
-        for (int i = 0; i < steps.length; i++) {
-            String step = steps[i];
-            try {
-                String[] parts = step.split("\\. ", 2);
-//                if (parts.length < 2) {
-//                    ErrorHandler.logWarning("无法解析步骤 #" + (i + 1) + ": " + step);
-//                    continue;
-//                }
-
-                String stepContent = parts[0];
-                Map<String, Object> parsed = NlpParser.parseStep(stepContent);
-                if (parsed.isEmpty()) {
-                    ErrorHandler.logWarning("无法解析步骤内容 #" + (i + 1) + ": " + stepContent);
-                    continue;
-                }
-
-                Facts facts = new Facts();
-                facts.put("action", parsed.get("action"));
-                // facts.put("locatorType", parsed.getOrDefault("locatorType", null)); //
-                // 用户指定的定位方式
-                putToFact(facts, parsed, Arrays.asList("element", "value", "context", "condition", "result"));
-
-                engine.fire(rules, facts);
-            } catch (Exception e) {
-                ErrorHandler.logError("处理步骤 #" + (i + 1) + " 时发生错误: " + e.getMessage(), e);
-            }
-        }
-
-        // 6. 保存生成的命令到文件
-        RulesRegistry.saveCommandsToFile(outputPath);
-
-        return RulesRegistry.getCommands();
     }
 
     private static void putToFact(Facts facts, Map<String, Object> parsed, List<String> keys) {

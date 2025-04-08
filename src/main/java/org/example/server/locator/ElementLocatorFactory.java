@@ -74,8 +74,15 @@ public class ElementLocatorFactory {
         return getLocator(elementName, null);
     }
 
-    public static String getLocator(String elementName, String context) {
-        String locatorType = getLocatorType(elementName, null);
+    public static String getLocator(String elementName, String context) throws RuleEngineException {
+        String locatorType;
+        try {
+            locatorType = getLocatorType(elementName, null);
+        } catch (RuleEngineException e) {
+            ErrorHandler.handle(e);
+            throw new RuleEngineException("获取元素定位类型失败: " + e.getMessage(),
+                    RuleEngineException.ErrorLevel.ERROR);
+        }
 
         ElementLocatorStrategy strategy = strategies.get(locatorType);
         if (strategy == null) {

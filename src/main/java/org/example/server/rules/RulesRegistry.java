@@ -1,5 +1,6 @@
 package org.example.server.rules;
 
+import org.example.server.exception.RuleEngineException;
 import org.example.server.handler.NlpParser;
 import org.example.server.locator.ElementLocatorFactory;
 import org.example.server.util.ErrorHandler;
@@ -17,99 +18,112 @@ import java.util.Map;
 public class RulesRegistry {
     private static final List<String> taguiCommands = new ArrayList<>();
 
-    public static Rules registerRules() {
+    public static Rules registerRules() throws RuleEngineException {
         Rules rules = new Rules();
 
-        // 注册点击规则
-        rules.register(RuleFactory.createRule("click", facts -> {
-            String command = getCommand("click", facts.get("element"), null, facts.get("context"));
+        try{// 注册点击规则
+            rules.register(RuleFactory.createRule("click", facts -> {
+                String command = getCommand("click", facts.get("element"), null, facts.get("context"));
 
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        rules.register(RuleFactory.createRule("rclick", facts -> {
-            String command = getCommand("rclick", facts.get("element"), null, facts.get("context"));
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        rules.register(RuleFactory.createRule("dclick", facts -> {
-            String command = getCommand("dclick", facts.get("element"), null, facts.get("context"));
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        rules.register(RuleFactory.createRule("hover", facts -> {
-            String command = getCommand("hover", facts.get("element"), null, facts.get("context"));
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        rules.register(RuleFactory.createRule("mouse", facts -> {
-            String command = getCommand("mouse", null, facts.get("value"), null);
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        rules.register(RuleFactory.createRule("wait", facts -> {
-            String command = getCommand("wait", null, facts.get("value"), null);
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        rules.register(RuleFactory.createRule("timeout", facts -> {
-            String command = getCommand("timeout", null, facts.get("value"), null);
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        // 注册输入规则
-        rules.register(RuleFactory.createRule("type", facts -> {
-            String command = getCommand("type", facts.get("element"), facts.get("value"), facts.get("context"));
-
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
-
-        // 访问网站
-        rules.register((RuleFactory.createRule("", facts -> {
-            Map<String, Object> params = new HashMap<>();
-            String element = facts.get("element");
-            params.put("element", element);
-
-            if (element != null) {
-                String command = CommandGenerator.generateCommand(params);
                 System.out.println(command); // 保留控制台输出
                 taguiCommands.add(command); // 添加到命令列表
-            }
-        })));
+            }));
 
-        rules.register(RuleFactory.createRule("echo", facts -> {
-            String command = getCommand("echo", null, facts.get("value"), null);
+            rules.register(RuleFactory.createRule("rclick", facts -> {
+                String command = getCommand("rclick", facts.get("element"), null, facts.get("context"));
 
-            System.out.println(command); // 保留控制台输出
-            taguiCommands.add(command); // 添加到命令列表
-        }));
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
 
-        // 注册通用条件规则
-        rules.register(RuleFactory.createRule("conditional", facts -> {
-            String condition = facts.get("condition");
-            String result = facts.get("result");
+            rules.register(RuleFactory.createRule("dclick", facts -> {
+                String command = getCommand("dclick", facts.get("element"), null, facts.get("context"));
 
-            // 这里需要进一步解析条件和动作，递归处理
-            // 简化实现，实际可能需要更复杂的解析逻辑
-            String command = "if " + parseCondition(condition) + "\n    " + parseAction(result);
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
 
-            System.out.println(command);
-            taguiCommands.add(command);
-        }));
+            rules.register(RuleFactory.createRule("hover", facts -> {
+                String command = getCommand("hover", facts.get("element"), null, facts.get("context"));
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            rules.register(RuleFactory.createRule("mouse", facts -> {
+                String command = getCommand("mouse", null, facts.get("value"), null);
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            rules.register(RuleFactory.createRule("wait", facts -> {
+                String command = getCommand("wait", null, facts.get("value"), null);
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            rules.register(RuleFactory.createRule("timeout", facts -> {
+                String command = getCommand("timeout", null, facts.get("value"), null);
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            // 注册输入规则
+            rules.register(RuleFactory.createRule("type", facts -> {
+                String command = getCommand("type", facts.get("element"), facts.get("value"), facts.get("context"));
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            // 访问网站
+            rules.register((RuleFactory.createRule("", facts -> {
+                Map<String, Object> params = new HashMap<>();
+                String element = facts.get("element");
+                params.put("element", element);
+
+                if (element != null) {
+                    String command = CommandGenerator.generateCommand(params);
+                    System.out.println(command); // 保留控制台输出
+                    taguiCommands.add(command); // 添加到命令列表
+                }
+            })));
+
+            rules.register(RuleFactory.createRule("echo", facts -> {
+                String command = getCommand("echo", null, facts.get("value"), null);
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            // 注册通用条件规则
+            rules.register(RuleFactory.createRule("conditional", facts -> {
+                String condition = facts.get("condition");
+                String result = facts.get("result");
+
+                // 这里需要进一步解析条件和动作，递归处理
+                // 简化实现，实际可能需要更复杂的解析逻辑
+                String command = "if " + parseCondition(condition) + "\n    " + parseAction(result);
+
+                System.out.println(command);
+                taguiCommands.add(command);
+            }));
+
+            rules.register(RuleFactory.createRule("fullscreen", facts -> {
+                String command = "keyboard [alt][space]\n" +
+                        "keyboard x\n";
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+        }
+        catch (Exception e) {
+            ErrorHandler.logError("注册规则时发生错误: " + e.getMessage(), e);
+            throw new RuleEngineException("注册规则时发生错误: " + e.getMessage());
+        }
 
         return rules;
     }
@@ -135,6 +149,10 @@ public class RulesRegistry {
 
             // 写入文件,false表示写入文件时不追加内容，即先清空再写入
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, false))) {
+                //把CMD 设置成utf-8
+                writer.write("run cmd /c chcp 65001\n");
+                writer.write("keyboard [alt][space]\n" +
+                        "keyboard x\n");
                 for (String command : taguiCommands) {
                     writer.write(command);
                     writer.newLine();
@@ -179,19 +197,33 @@ public class RulesRegistry {
     /**
      * 解析条件表达式
      */
-    private static String parseCondition(String condition) {
+    private static String parseCondition(String condition) throws RuleEngineException {
         // 处理常见条件模式
         if (condition.matches(".*存在.*")) {
             String[] parts = condition.replaceAll("(.*?)的(.*?)存在.*", "$1,$2").split(",", 2);
             String context = parts.length > 0 ? parts[0] : "";
             String element = parts.length > 1 ? parts[1] : "";
-            return "present(\"" + ElementLocatorFactory.getLocator(element, context) + "\")";
+            String result;
+            try {
+                result = "present(\"" + ElementLocatorFactory.getLocator(element, context) + "\")";
+            } catch (Exception e) {
+                ErrorHandler.logError("解析条件时发生错误: " + e.getMessage(), e);
+                throw new RuleEngineException("解析条件时发生错误: " + e.getMessage());
+            }
+            return result;
 
         } else if (condition.matches(".*出现.*")) {
             String[] parts = condition.replaceAll("(.*?)的(.*?)出现", "$1,$2").split(",", 2);
             String context = parts.length > 0 ? parts[0] : "";
             String element = parts.length > 1 ? parts[1] : "";
-            return "exist(\"" + ElementLocatorFactory.getLocator(element, context) + "\")";
+            String result;
+            try {
+                result = "exist(\"" + ElementLocatorFactory.getLocator(element, context) + "\")";
+            } catch (Exception e) {
+                ErrorHandler.logError("解析条件时发生错误: " + e.getMessage(), e);
+                throw new RuleEngineException("解析条件时发生错误: " + e.getMessage());
+            }
+            return result;
         }
         // 可以添加更多条件类型处理
         return condition; // 简单处理，实际应用需更复杂的解析
