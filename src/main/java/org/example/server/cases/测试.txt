@@ -1,5 +1,5 @@
-访问www.zwdoctor.com:44502/#/
-等待10秒
+访问www.zwdoctor.com:44502/#/login
+等待3秒
 在test的account input输入"123"
 在test的password input输入"123"
-如果test的login button存在，则输出点击了
+如果test的login button存在，则点击test的login button

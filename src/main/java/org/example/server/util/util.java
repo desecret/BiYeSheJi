@@ -1,5 +1,8 @@
 package org.example.server.util;
 
+import com.sun.jna.Native;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef;
 import org.example.server.config.ElementConfig;
 import org.example.server.config.ElementMappings;
 import org.example.server.handler.ActionHandler;
@@ -10,11 +13,9 @@ import org.yaml.snakeyaml.DumperOptions;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.example.server.staticString.*;
 
@@ -264,29 +265,63 @@ public class util {
     }
 
 
-    public static String runTaguiCommand() {
+    public static Map<String, Object> runTaguiCommand() {
+        Map<String, Object> result = new HashMap<>();
+
         try {
-            // 使用cmd /c来执行命令
+            // 启动 TagUI 进程
             ProcessBuilder processBuilder = new ProcessBuilder("cmd", "/c", "tagui", TAGUI_SCRIPT_PATH);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
 
-            StringBuilder output = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) { // 使用GBK编码处理中文输出
+            // 等待一段时间，让 SikuliX 窗口出现
+//            Thread.sleep(2000);
+//
+//            // 查找标题包含"SikuliX Engine"的窗口
+//            final WinDef.HWND sikulixWindow = User32.INSTANCE.FindWindow(null, "SikuliX Engine");
+//            if (sikulixWindow != null) {
+//                // 收集所有子窗口文本
+//                final List<String> childTexts = new ArrayList<>();
+//
+//                User32.WNDENUMPROC callback = (hwnd, data) -> {
+//                    char[] windowText = new char[512];
+//                    User32.INSTANCE.GetWindowText(hwnd, windowText, 512);
+//                    String text = Native.toString(windowText);
+//                    if (!text.isEmpty()) {
+//                        childTexts.add(text);
+//                    }
+//                    return true;
+//                };
+//
+//                User32.INSTANCE.EnumChildWindows(sikulixWindow, callback, null);
+//
+//                result.put("sikulixWindowFound", true);
+//                result.put("sikulixTexts", childTexts);
+//            } else {
+//                result.put("sikulixWindowFound", false);
+//            }
+
+            // 等待进程完成
+            int exitCode = process.waitFor();
+
+            // 读取标准输出
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder output = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
                 }
+                result.put("output", output.toString());
             }
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                throw new IOException("TagUI命令执行失败，退出代码: " + exitCode);
-            }
+            result.put("success", exitCode == 0);
+            result.put("exitCode", exitCode);
 
-            return output.toString();
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException("执行TagUI命令时出错: " + e.getMessage(), e);
+            return result;
+        } catch (Exception e) {
+            result.put("error", "执行TagUI命令时出错: " + e.getMessage());
+            return result;
         }
     }
 }

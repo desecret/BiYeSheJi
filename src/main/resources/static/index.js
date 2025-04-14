@@ -877,7 +877,8 @@ async function runTestCase() {
                     div.classList.add('info');
                 }
 
-                div.textContent = log;
+                // 将换行符转换为<br>标签
+                div.innerHTML = log.replace(/\n/g, '<br>');
                 resultsDiv.appendChild(div);
             });
         }

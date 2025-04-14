@@ -350,13 +350,14 @@ public class WebController {
             }
 
             // 执行命令文件
-            String res = util.runTaguiCommand();
-            // 处理编码问题
-//            byte[] bytes = res.getBytes(StandardCharsets.ISO_8859_1);
-//            String utf8Result = new String(bytes, StandardCharsets.UTF_8);
-//            System.out.println("执行结果: " + utf8Result);
-//            logs.add("执行结果: " + utf8Result);
-            logs.add("执行结果" + res);
+            String res;
+            Map<String, Object> result = util.runTaguiCommand();
+            if ((Boolean) result.get("success")) {
+                res = "详细输出：" + result.get("output") + "\n\n测试通过";
+            } else {
+                res = "详细输出：" + result.get("output") + "\n\n测试失败：" + result.get("error");
+            }
+            logs.add("执行结果：\n" + res);
             System.out.println("执行结果: " + res);
         } catch (Exception e) {
             logs.add("错误: " + e.getMessage());
