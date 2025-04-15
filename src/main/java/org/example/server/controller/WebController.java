@@ -4,7 +4,10 @@ import org.example.server.Init;
 import org.example.server.config.ElementConfig;
 import org.example.server.config.ElementMappings;
 import org.example.server.locator.ElementLocatorFactory;
+import org.example.server.service.ElementConfigService;
+import org.example.server.service.TestCaseService;
 import org.example.server.util.util;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -38,6 +41,10 @@ import static org.example.server.util.util.*;
 @RequestMapping("/api")
 public class WebController {
 
+    @Autowired
+    private ElementConfigService elementConfigService;
+    @Autowired
+    private TestCaseService testCaseService;
     /**
      * 构造函数
      * 
@@ -56,20 +63,21 @@ public class WebController {
      */
     @GetMapping("/testcases")
     public List<Map<String, Object>> getTestCases() {
-        List<Map<String, Object>> testCases = new ArrayList<>();
-        File casesDir = new File(CASES_DIR);
-        if (casesDir.exists() && casesDir.isDirectory()) {
-            File[] files = casesDir.listFiles((dir, name) -> name.endsWith(".txt"));
-            if (files != null) {
-                for (File file : files) {
-                    Map<String, Object> testCase = new HashMap<>();
-                    testCase.put("id", file.getName());
-                    testCase.put("name", file.getName().replace(".txt", ""));
-                    testCases.add(testCase);
-                }
-            }
-        }
-        return testCases;
+//        List<Map<String, Object>> testCases = new ArrayList<>();
+//        File casesDir = new File(CASES_DIR);
+//        if (casesDir.exists() && casesDir.isDirectory()) {
+//            File[] files = casesDir.listFiles((dir, name) -> name.endsWith(".txt"));
+//            if (files != null) {
+//                for (File file : files) {
+//                    Map<String, Object> testCase = new HashMap<>();
+//                    testCase.put("id", file.getName());
+//                    testCase.put("name", file.getName().replace(".txt", ""));
+//                    testCases.add(testCase);
+//                }
+//            }
+//        }
+//        return testCases;
+        return testCaseService.getAllTestCases();
     }
 
     /**
@@ -82,86 +90,108 @@ public class WebController {
      * @return 包含测试用例步骤和状态的Map，steps包含步骤列表，success表示是否成功
      */
     @GetMapping("/testcases/{id}")
-    public Map<String, Object> getTestCaseContent(@PathVariable String id) {
-        Map<String, Object> response = new HashMap<>();
-        try {
-            String filePath = CASES_DIR + id;
-            String content = new String(Files.readAllBytes(Paths.get(filePath)));
-            List<Map<String, Object>> steps = new ArrayList<>();
-
-            // 解析测试用例内容
-            String[] lines = content.split("\n");
-            for (String line : lines) {
-                Map<String, Object> step = new HashMap<>();
-                if (line.startsWith("全屏")) {
-                    step.put("type", "全屏");
-                    step.put("content", "");
-                } else if (line.startsWith("点击")) {
-                    step.put("type", "点击");
-                    step.put("content", line.substring(2));
-                } else if (line.startsWith("右键点击")) {
-                    step.put("type", "右键点击");
-                    step.put("content", line.substring(4));
-                } else if (line.startsWith("双击")) {
-                    step.put("type", "双击");
-                    step.put("content", line.substring(2));
-                } else if (line.startsWith("鼠标移动到")) {
-                    step.put("type", "鼠标移动到");
-                    step.put("content", line.substring(5));
-                } else if (line.startsWith("在当前鼠标位置，按下鼠标左键")) {
-                    step.put("type", "在当前鼠标位置，按下鼠标左键");
-                    step.put("content", "");
-                } else if (line.startsWith("在当前鼠标位置，弹起鼠标左键")) {
-                    step.put("type", "在当前鼠标位置，弹起鼠标左键");
-                    step.put("content", "");
-                } else if (line.startsWith("等待")) {
-                    step.put("type", "等待");
-                    // 提取数字部分
-                    String timeStr = line.substring(2).replaceAll("[^0-9]", "");
-                    step.put("content", timeStr);
-                } else if (line.startsWith("设置自动等待")) {
-                    step.put("type", "设置自动等待");
-                    // 提取数字部分
-                    String timeStr = line.substring(6).replaceAll("[^0-9]", "");
-                    step.put("content", timeStr);
-                } else if (line.startsWith("在")) {
-                    step.put("type", "在");
-                    // 保留完整内容
-                    step.put("content", line.substring(1));
-                } else if (line.startsWith("访问")) {
-                    step.put("type", "访问");
-                    // 保留完整URL，包括第一个字母
-                    step.put("content", line.substring(2));
-                } else if (line.endsWith("出现")) {
-                    step.put("type", "出现");
-                    step.put("content", line.substring(0, line.length() - 2));
-                } else if (line.endsWith("存在")) {
-                    step.put("type", "存在");
-                    step.put("content", line.substring(0, line.length() - 2));
-                } else if (line.startsWith("输出")) {
-                    step.put("type", "输出");
-                    // 提取引号中的内容
-                    String outputContent = line.substring(2);
-//                    if (outputContent.startsWith("\"") && outputContent.endsWith("\"")) {
-//                        outputContent = outputContent.substring(1, outputContent.length() - 1);
-//                    }
-                    step.put("content", outputContent);
-                } else if (line.startsWith("如果")) {
-                    step.put("type", "如果");
-                    step.put("content", line.substring(2));
-                }
-                if (!step.isEmpty()) {
-                    steps.add(step);
-                }
+    public ResponseEntity<Map<String, Object>> getTestCaseContent(@PathVariable String id) {
+//        Map<String, Object> response = new HashMap<>();
+//        try {
+//            String filePath = CASES_DIR + id;
+//            String content = new String(Files.readAllBytes(Paths.get(filePath)));
+//            List<Map<String, Object>> steps = new ArrayList<>();
+//
+//            // 解析测试用例内容
+//            String[] lines = content.split("\n");
+//            for (String line : lines) {
+//                Map<String, Object> step = new HashMap<>();
+//                if (line.startsWith("全屏")) {
+//                    step.put("type", "全屏");
+//                    step.put("content", "");
+//                } else if (line.startsWith("点击")) {
+//                    step.put("type", "点击");
+//                    step.put("content", line.substring(2));
+//                } else if (line.startsWith("右键点击")) {
+//                    step.put("type", "右键点击");
+//                    step.put("content", line.substring(4));
+//                } else if (line.startsWith("双击")) {
+//                    step.put("type", "双击");
+//                    step.put("content", line.substring(2));
+//                } else if (line.startsWith("鼠标移动到")) {
+//                    step.put("type", "鼠标移动到");
+//                    step.put("content", line.substring(5));
+//                } else if (line.startsWith("在当前鼠标位置，按下鼠标左键")) {
+//                    step.put("type", "在当前鼠标位置，按下鼠标左键");
+//                    step.put("content", "");
+//                } else if (line.startsWith("在当前鼠标位置，弹起鼠标左键")) {
+//                    step.put("type", "在当前鼠标位置，弹起鼠标左键");
+//                    step.put("content", "");
+//                } else if (line.startsWith("等待")) {
+//                    step.put("type", "等待");
+//                    // 提取数字部分
+//                    String timeStr = line.substring(2).replaceAll("[^0-9]", "");
+//                    step.put("content", timeStr);
+//                } else if (line.startsWith("设置自动等待")) {
+//                    step.put("type", "设置自动等待");
+//                    // 提取数字部分
+//                    String timeStr = line.substring(6).replaceAll("[^0-9]", "");
+//                    step.put("content", timeStr);
+//                } else if (line.startsWith("在")) {
+//                    step.put("type", "在");
+//                    // 保留完整内容
+//                    step.put("content", line.substring(1));
+//                } else if (line.startsWith("访问")) {
+//                    step.put("type", "访问");
+//                    // 保留完整URL，包括第一个字母
+//                    step.put("content", line.substring(2));
+//                } else if (line.endsWith("出现")) {
+//                    step.put("type", "出现");
+//                    step.put("content", line.substring(0, line.length() - 2));
+//                } else if (line.endsWith("存在")) {
+//                    step.put("type", "存在");
+//                    step.put("content", line.substring(0, line.length() - 2));
+//                } else if (line.startsWith("输出")) {
+//                    step.put("type", "输出");
+//                    // 提取引号中的内容
+//                    String outputContent = line.substring(2);
+////                    if (outputContent.startsWith("\"") && outputContent.endsWith("\"")) {
+////                        outputContent = outputContent.substring(1, outputContent.length() - 1);
+////                    }
+//                    step.put("content", outputContent);
+//                } else if (line.startsWith("如果")) {
+//                    step.put("type", "如果");
+//                    step.put("content", line.substring(2));
+//                }
+//                if (!step.isEmpty()) {
+//                    steps.add(step);
+//                }
+//            }
+//
+//            response.put("steps", steps);
+//            response.put("success", true);
+//        } catch (IOException e) {
+//            response.put("success", false);
+//            response.put("error", "无法读取测试用例内容：" + e.getMessage());
+//        }
+//        return response;
+            Map<String, Object> testCase = testCaseService.getTestCaseById(Long.valueOf(id));
+            if (testCase != null) {
+                return ResponseEntity.ok(testCase);
+            } else {
+                return ResponseEntity.notFound().build();
             }
+    }
 
-            response.put("steps", steps);
-            response.put("success", true);
-        } catch (IOException e) {
-            response.put("success", false);
-            response.put("error", "无法读取测试用例内容：" + e.getMessage());
+    /**
+     * 根据名称获取测试用例详情
+     *
+     * @param name 测试用例名称
+     * @return 测试用例详情
+     */
+    @GetMapping("/testcases/name/{name}")
+    public ResponseEntity<Map<String, Object>> getTestCaseByName(@PathVariable String name) {
+        Map<String, Object> testCase = testCaseService.getTestCaseByName(name);
+        if (testCase != null) {
+            return ResponseEntity.ok(testCase);
+        } else {
+            return ResponseEntity.notFound().build();
         }
-        return response;
     }
 
     /**
@@ -174,19 +204,20 @@ public class WebController {
      */
     @GetMapping("/elements")
     public List<ElementConfig> getElements() {
-        try {
-            Constructor constructor = new Constructor(ElementMappings.class);
-            Yaml yaml = new Yaml(constructor);
-
-            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
-            if (mappings != null && mappings.getConfigs() != null) {
-                return mappings.getConfigs();
-            }
-            return new ArrayList<>();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
+//        try {
+//            Constructor constructor = new Constructor(ElementMappings.class);
+//            Yaml yaml = new Yaml(constructor);
+//
+//            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+//            if (mappings != null && mappings.getConfigs() != null) {
+//                return mappings.getConfigs();
+//            }
+//            return new ArrayList<>();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            return new ArrayList<>();
+//        }
+        return elementConfigService.getAllElements();
     }
 
     /**
@@ -215,31 +246,7 @@ public class WebController {
         return actions;
     }
 
-    /**
-     * 获取按context分组的元素列表
-     * 
-     * @return 按context分组的元素列表
-     */
-    @GetMapping("/elements/grouped")
-    public Map<String, List<ElementConfig>> getGroupedElements() {
-        try {
-            Constructor constructor = new Constructor(ElementMappings.class);
-            Yaml yaml = new Yaml(constructor);
 
-            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
-            if (mappings != null && mappings.getConfigs() != null) {
-                Map<String, List<ElementConfig>> groupedElements = new HashMap<>();
-                for (ElementConfig element : mappings.getConfigs()) {
-                    groupedElements.computeIfAbsent(element.getContext(), k -> new ArrayList<>()).add(element);
-                }
-                return groupedElements;
-            }
-            return new HashMap<>();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new HashMap<>();
-        }
-    }
 
     /**
      * 保存测试用例
@@ -250,69 +257,118 @@ public class WebController {
      * @param request 包含测试用例名称和步骤的请求体
      */
     @PostMapping("/testcases")
-    public void saveTestCase(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> saveTestCase(@RequestBody Map<String, Object> request) {
+//        String name = (String) request.get("name");
+//        List<Map<String, Object>> steps = (List<Map<String, Object>>) request.get("steps");
+//
+//        StringBuilder content = new StringBuilder();
+//        for (Map<String, Object> step : steps) {
+//            String type = (String) step.get("type");
+//            String contentStr = (String) step.get("content");
+//
+//            switch (type) {
+//                case "全屏":
+//                    content.append("全屏\n");
+//                    break;
+//                case "点击":
+//                    content.append("点击").append(contentStr).append("\n");
+//                    break;
+//                case "右键点击":
+//                    content.append("右键点击").append(contentStr).append("\n");
+//                    break;
+//                case "双击":
+//                    content.append("双击").append(contentStr).append("\n");
+//                    break;
+//                case "鼠标移动到":
+//                    content.append("鼠标移动到").append(contentStr).append("\n");
+//                    break;
+//                case "在当前鼠标位置，按下鼠标左键":
+//                    content.append("在当前鼠标位置，按下鼠标左键\n");
+//                    break;
+//                case "在当前鼠标位置，弹起鼠标左键":
+//                    content.append("在当前鼠标位置，弹起鼠标左键\n");
+//                    break;
+//                case "等待":
+//                    content.append("等待").append(contentStr).append("\n");
+//                    break;
+//                case "设置自动等待":
+//                    content.append("设置自动等待").append(contentStr).append("\n");
+//                    break;
+//                case "在":
+//                    content.append("在").append(contentStr).append("\n");
+//                    break;
+//                case "访问":
+//                    content.append("访问").append(contentStr).append("\n");
+//                    break;
+//                case "出现":
+//                    content.append(contentStr).append("出现\n");
+//                    break;
+//                case "存在":
+//                    content.append(contentStr).append("存在\n");
+//                    break;
+//                case "输出":
+//                    content.append("输出").append(contentStr).append("\n");
+//                    break;
+//                case "如果":
+//                    content.append("如果").append(contentStr).append("\n");
+//                    break;
+//            }
+//        }
+//
+//        try {
+//            File file = new File(CASES_DIR + name + ".txt");
+//            java.nio.file.Files.write(file.toPath(), content.toString().getBytes());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
         String name = (String) request.get("name");
+        @SuppressWarnings("unchecked")
         List<Map<String, Object>> steps = (List<Map<String, Object>>) request.get("steps");
 
-        StringBuilder content = new StringBuilder();
-        for (Map<String, Object> step : steps) {
-            String type = (String) step.get("type");
-            String contentStr = (String) step.get("content");
-
-            switch (type) {
-                case "全屏":
-                    content.append("全屏\n");
-                    break;
-                case "点击":
-                    content.append("点击").append(contentStr).append("\n");
-                    break;
-                case "右键点击":
-                    content.append("右键点击").append(contentStr).append("\n");
-                    break;
-                case "双击":
-                    content.append("双击").append(contentStr).append("\n");
-                    break;
-                case "鼠标移动到":
-                    content.append("鼠标移动到").append(contentStr).append("\n");
-                    break;
-                case "在当前鼠标位置，按下鼠标左键":
-                    content.append("在当前鼠标位置，按下鼠标左键\n");
-                    break;
-                case "在当前鼠标位置，弹起鼠标左键":
-                    content.append("在当前鼠标位置，弹起鼠标左键\n");
-                    break;
-                case "等待":
-                    content.append("等待").append(contentStr).append("\n");
-                    break;
-                case "设置自动等待":
-                    content.append("设置自动等待").append(contentStr).append("\n");
-                    break;
-                case "在":
-                    content.append("在").append(contentStr).append("\n");
-                    break;
-                case "访问":
-                    content.append("访问").append(contentStr).append("\n");
-                    break;
-                case "出现":
-                    content.append(contentStr).append("出现\n");
-                    break;
-                case "存在":
-                    content.append(contentStr).append("存在\n");
-                    break;
-                case "输出":
-                    content.append("输出").append(contentStr).append("\n");
-                    break;
-                case "如果":
-                    content.append("如果").append(contentStr).append("\n");
-                    break;
-            }
+        if (name == null || steps == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "缺少必要的参数：name 或 steps");
+            return ResponseEntity.badRequest().body(error);
         }
 
-        try {
-            File file = new File(CASES_DIR + name + ".txt");
-            java.nio.file.Files.write(file.toPath(), content.toString().getBytes());
-        } catch (IOException e) {
-            e.printStackTrace();
+        Map<String, Object> result = testCaseService.saveTestCase(name, steps);
+        if ((Boolean) result.get("success")) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    /**
+     * 删除测试用例
+     *
+     * @param id 测试用例ID
+     * @return 删除结果
+     */
+    @DeleteMapping("/testcases/{id}")
+    public ResponseEntity<Map<String, Object>> deleteTestCase(@PathVariable Long id) {
+        Map<String, Object> result = testCaseService.deleteTestCase(id);
+        if ((Boolean) result.get("success")) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
+    }
+
+    /**
+     * 从文件系统导入测试用例到数据库
+     *
+     * @return 导入结果
+     */
+    @PostMapping("/testcases/import")
+    public ResponseEntity<Map<String, Object>> importTestCases() {
+        Map<String, Object> result = testCaseService.importFromFiles();
+        if ((Boolean) result.get("success")) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
         }
     }
 
@@ -351,7 +407,7 @@ public class WebController {
 
             // 执行命令文件
             String res;
-            Map<String, Object> result = util.runTaguiCommand();
+            Map<String, Object> result = util.runTaguiCommand(TAGUI_SCRIPT_PATH);
             if ((Boolean) result.get("success")) {
                 res = "详细输出：" + result.get("output") + "\n\n测试通过";
             } else {
@@ -365,6 +421,42 @@ public class WebController {
         Map<String, Object> result = new HashMap<>();
         result.put("logs", logs);
         return result;
+    }
+
+    /**
+     * 获取按context分组的元素列表
+     *
+     * @return 按context分组的元素列表
+     */
+    @GetMapping("/elements/grouped")
+    public Map<String, List<ElementConfig>> getGroupedElements() {
+        try {
+            Constructor constructor = new Constructor(ElementMappings.class);
+            Yaml yaml = new Yaml(constructor);
+
+            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
+            if (mappings != null && mappings.getConfigs() != null) {
+                Map<String, List<ElementConfig>> groupedElements = new HashMap<>();
+                for (ElementConfig element : mappings.getConfigs()) {
+                    groupedElements.computeIfAbsent(element.getContext(), k -> new ArrayList<>()).add(element);
+                }
+                return groupedElements;
+            }
+            return new HashMap<>();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new HashMap<>();
+        }
+//        List<ElementConfig> allElements = elementConfigService.getAllElements();
+//        Map<String, List<ElementConfig>> groupedElements = new HashMap<>();
+//
+//        for (ElementConfig element : allElements) {
+//            String context = element.getContext();
+//            groupedElements.computeIfAbsent(context, k -> new ArrayList<>())
+//                    .add(element);
+//        }
+//
+//        return groupedElements;
     }
 
     /**

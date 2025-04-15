@@ -149,16 +149,16 @@ async function loadTestCases() {
 async function loadTestCaseContent(id) {
     try {
         const response = await fetch(`/api/testcases/${id}`);
-        const data = await response.json();
 
-        if (data.success) {
+        if (response.ok) {
+            const data = await response.json();
             currentTestCase = id;
-            document.getElementById('testCaseName').value = id.replace('.txt', '');
+            document.getElementById('testCaseName').value = data.name;
 
             // 更新UI选中状态
             document.querySelectorAll('.test-case-item').forEach(item => {
                 item.classList.remove('active');
-                if (item.textContent === id.replace('.txt', '')) {
+                if (item.textContent === id) {
                     item.classList.add('active');
                 }
             });
@@ -170,7 +170,8 @@ async function loadTestCaseContent(id) {
                 addStep(step, index + 1);
             });
         } else {
-            alert('加载测试用例失败: ' + data.error);
+            const errorData = await response.json().catch(() => ({}));
+            alert('加载测试用例失败: ' + errorData);
         }
     } catch (error) {
         console.error('加载测试用例内容失败:', error);

@@ -1,2 +1,1 @@
-点击txhy的使用复选框
-如果txhy的使用复选框存在，则点击txhy的打开按钮
+如果test的login button存在，则在test的account input输入"123"
