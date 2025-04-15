@@ -410,7 +410,7 @@ public class util {
         // 保存修改后的HTML
         Files.write(Paths.get(reportPath), doc.outerHtml().getBytes(StandardCharsets.UTF_8));
 
-        return true;
+        return notExecutedCount == 0; // 返回是否有未执行的命令
     }
 
 

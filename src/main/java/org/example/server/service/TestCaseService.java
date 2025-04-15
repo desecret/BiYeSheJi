@@ -67,54 +67,58 @@ public class TestCaseService {
      */
     @Transactional
     public Map<String, Object> saveTestCase(String name, List<Map<String, Object>> steps) {
-        Map<String, Object> result = new HashMap<>();
+    Map<String, Object> result = new HashMap<>();
 
-        try {
-            // 检查是否存在同名测试用例
-            Optional<TestCaseEntity> existingCase = testCaseRepository.findByName(name);
-            TestCaseEntity testCase;
+    try {
+        // 检查是否存在同名测试用例
+        Optional<TestCaseEntity> existingCase = testCaseRepository.findByName(name);
+        TestCaseEntity testCase;
 
-            if (existingCase.isPresent()) {
-                // 更新现有用例
-                testCase = existingCase.get();
-                // 清除原有步骤
-                testCase.getSteps().clear();
-            } else {
-                // 创建新用例
-                testCase = new TestCaseEntity();
-                testCase.setName(name);
+        if (existingCase.isPresent()) {
+            // 更新现有用例
+            testCase = existingCase.get();
+
+            // 正确处理集合：先移除所有现有步骤
+            List<TestCaseStepEntity> currentSteps = new ArrayList<>(testCase.getSteps());
+            for (TestCaseStepEntity step : currentSteps) {
+                testCase.getSteps().remove(step);
             }
-
-
-            // 添加新步骤
-            List<TestCaseStepEntity> stepEntities = new ArrayList<>();
-            int stepOrder = 0;
-
-            for (Map<String, Object> step : steps) {
-                TestCaseStepEntity stepEntity = new TestCaseStepEntity();
-                stepEntity.setTestCase(testCase);
-                stepEntity.setStepOrder(stepOrder++);
-                stepEntity.setStepType((String) step.get("type"));
-                stepEntity.setContent((String) step.get("content"));
-                stepEntities.add(stepEntity);
-            }
-
-            testCase.setSteps(stepEntities);
-            testCaseRepository.save(testCase);
-
-            // 同时更新文件系统中的用例(用于向后兼容)
-            saveToFile(name, steps);
-
-            result.put("success", true);
-            result.put("id", testCase.getId());
-        } catch (Exception e) {
-            e.printStackTrace();
-            result.put("success", false);
-            result.put("error", e.getMessage());
+            testCaseRepository.saveAndFlush(testCase);
+        } else {
+            // 创建新用例
+            testCase = new TestCaseEntity();
+            testCase.setName(name);
+            testCase.setSteps(new ArrayList<>());
+            testCase = testCaseRepository.saveAndFlush(testCase);
         }
 
-        return result;
+        // 添加新步骤
+        int stepOrder = 0;
+        for (Map<String, Object> step : steps) {
+            TestCaseStepEntity stepEntity = new TestCaseStepEntity();
+            stepEntity.setTestCase(testCase);
+            stepEntity.setStepOrder(stepOrder++);
+            stepEntity.setStepType((String) step.get("type"));
+            stepEntity.setContent((String) step.get("content"));
+            testCase.getSteps().add(stepEntity);
+        }
+
+        // 保存更新后的测试用例
+        testCaseRepository.saveAndFlush(testCase);
+
+        // 更新文件系统中的用例(用于向后兼容)
+        saveToFile(name, steps);
+
+        result.put("success", true);
+        result.put("id", testCase.getId());
+    } catch (Exception e) {
+        e.printStackTrace();
+        result.put("success", false);
+        result.put("error", e.getMessage());
     }
+
+    return result;
+}
 
     /**
      * 删除测试用例
