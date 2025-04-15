@@ -18,5 +18,6 @@ public class staticString {
         public static final String resourcesPath = "src/main/resources/";
 
         public static final String TAGUI_SCRIPT_PATH = "D:\\biyesheji\\Server\\server\\src\\main\\resources\\tagui_script.tag";
+        public static final String REPORT_PATH = "src/main/resources/static/tagui_script.tag.html";
 
 }

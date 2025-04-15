@@ -28,9 +28,8 @@ import org.example.server.util.ErrorHandler;
 import org.example.server.util.logConfig;
 
 import static org.example.server.util.httpRequest.uploadImagesAndProcessResponse;
-import static org.example.server.util.util.printSupportedCommands;
-import static org.example.server.util.util.writeToYaml;
 import static org.example.server.staticString.*;
+import static org.example.server.util.util.*;
 
 /**
  * 初始化类，用于启动时加载配置
@@ -51,6 +50,10 @@ public class Init implements ApplicationRunner {
         writeToYaml();
         ElementLocatorFactory.init();
 //        System.out.println(util.runTaguiCommand());
+
+//        System.out.println(util.extractCommandsFromReport("src/main/resources/static/tagui_script.tag.html"));
+//        System.out.println(compareScriptWithExecution(TAGUI_SCRIPT_PATH, "src/main/resources/static/tagui_script.tag.html"));
+//        util.enhanceTagUIReport(TAGUI_SCRIPT_PATH, "src/main/resources/static/tagui_script.tag.html");
     }
 
     private void init() {

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试审计报告</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .report-header {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .report-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .report-title h1 {
+            margin: 0;
+            color: #333;
+        }
+        .report-date {
+            color: #666;
+            font-size: 14px;
+        }
+        .report-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .summary-item {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin: 0 5px;
+        }
+        .success {
+            border-left: 4px solid #28a745;
+        }
+        .warning {
+            border-left: 4px solid #ffc107;
+        }
+        .error {
+            border-left: 4px solid #dc3545;
+        }
+        .summary-item h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #666;
+        }
+        .summary-item .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .summary-item .success .value {
+            color: #28a745;
+        }
+        .summary-item .warning .value {
+            color: #ffc107;
+        }
+        .summary-item .error .value {
+            color: #dc3545;
+        }
+        .report-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .step-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .step-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+        }
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .step-number {
+            font-weight: bold;
+            color: #666;
+        }
+        .step-status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .step-details {
+            padding-left: 20px;
+        }
+        .step-action {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .step-content {
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .step-duration {
+            font-size: 12px;
+            color: #777;
+        }
+        .step-logs {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .log-info {
+            color: #0c5460;
+        }
+        .log-warning {
+            color: #856404;
+        }
+        .log-error {
+            color: #721c24;
+        }
+        .screenshot-container {
+            margin-top: 10px;
+        }
+        .screenshot-container img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .print-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .print-button:hover {
+            background-color: #0056b3;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+            body {
+                background-color: white;
+            }
+            .container {
+                padding: 0;
+            }
+            .report-header, .report-content {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="report-header">
+            <div class="report-title">
+                <h1>测试审计报告</h1>
+                <button class="print-button no-print" onclick="window.print()">
+                    <i class="fas fa-print"></i> 打印报告
+                </button>
+            </div>
+            <div class="report-date" id="reportDate"></div>
+            <div class="report-summary">
+                <div class="summary-item success">
+                    <h3>总步骤数</h3>
+                    <div class="value" id="totalSteps">0</div>
+                </div>
+                <div class="summary-item success">
+                    <h3>成功</h3>
+                    <div class="value" id="successSteps">0</div>
+                </div>
+                <div class="summary-item warning">
+                    <h3>警告</h3>
+                    <div class="value" id="warningSteps">0</div>
+                </div>
+                <div class="summary-item error">
+                    <h3>失败</h3>
+                    <div class="value" id="errorSteps">0</div>
+                </div>
+                <div class="summary-item">
+                    <h3>执行时间</h3>
+                    <div class="value" id="totalTime">0s</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-content">
+            <div class="section">
+                <div class="section-title">测试环境</div>
+                <table id="envTable" width="100%" style="border-collapse: collapse;">
+                    <tr>
+                        <td width="30%" style="padding: 8px; border-bottom: 1px solid #eee;">操作系统</td>
+                        <td id="osInfo" style="padding: 8px; border-bottom: 1px solid #eee;"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">浏览器</td>
+                        <td id="browserInfo" style="padding: 8px; border-bottom: 1px solid #eee;"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;">执行时间</td>
+                        <td id="executionTime" style="padding: 8px; border-bottom: 1px solid #eee;"></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">执行步骤详情</div>
+                <ul class="step-list" id="stepsList">
+                    <!-- 步骤内容将通过JavaScript动态生成 -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时获取报告数据
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 从URL获取报告ID
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportId = urlParams.get('id');
+
+            if (!reportId) {
+                alert('未指定报告ID');
+                return;
+            }
+
+            try {
+                // 从服务器获取报告数据
+                const response = await fetch(`/api/report/${reportId}`);
+                if (!response.ok) {
+                    throw new Error('获取报告数据失败');
+                }
+
+                const reportData = await response.json();
+
+                // 填充报告数据
+                document.getElementById('reportDate').textContent = `报告生成时间：${reportData.reportDate || '未知'}`;
+                document.getElementById('totalSteps').textContent = reportData.totalSteps || 0;
+                document.getElementById('successSteps').textContent = reportData.successSteps || 0;
+                document.getElementById('warningSteps').textContent = reportData.warningSteps || 0;
+                document.getElementById('errorSteps').textContent = reportData.errorSteps || 0;
+                document.getElementById('totalTime').textContent = reportData.totalTime || '0s';
+
+                // 填充环境信息
+                document.getElementById('osInfo').textContent = reportData.environment?.os || '未知';
+                document.getElementById('browserInfo').textContent = reportData.environment?.browser || '未知';
+                document.getElementById('executionTime').textContent = reportData.environment?.executionTime || '未知';
+
+                // 填充步骤详情
+                const stepsList = document.getElementById('stepsList');
+                stepsList.innerHTML = '';
+
+                if (reportData.steps && reportData.steps.length > 0) {
+                    reportData.steps.forEach((step, index) => {
+                        const stepItem = document.createElement('li');
+                        stepItem.className = 'step-item';
+
+                        // 设置步骤状态样式
+                        let statusClass = 'status-success';
+                        let statusText = '成功';
+
+                        if (step.status === 'warning') {
+                            statusClass = 'status-warning';
+                            statusText = '警告';
+                        } else if (step.status === 'error') {
+                            statusClass = 'status-error';
+                            statusText = '失败';
+                        }
+
+                        // 创建步骤HTML
+                        stepItem.innerHTML = `
+                            <div class="step-header">
+                                <div class="step-number">步骤 ${index + 1}</div>
+                                <div class="step-status ${statusClass}">${statusText}</div>
+                            </div>
+                            <div class="step-details">
+                                <div class="step-action">动作: ${step.action}</div>
+                                <div class="step-content">内容: ${step.content}</div>
+                                <div class="step-duration">执行时间: ${step.duration || '未记录'}</div>
+                                ${step.logs && step.logs.length > 0 ? `
+                                    <div class="step-logs">
+                                        ${step.logs.map(log => `<div class="log-${log.type || 'info'}">${log.message}</div>`).join('')}
+                                    </div>
+                                ` : ''}
+                                ${step.screenshot ? `
+                                    <div class="screenshot-container">
+                                        <img src="/api/report/screenshot/${reportId}/${step.screenshot}" alt="步骤截图">
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+
+                        stepsList.appendChild(stepItem);
+                    });
+                } else {
+                    stepsList.innerHTML = '<li>没有执行步骤记录</li>';
+                }
+
+            } catch (error) {
+                console.error('加载报告数据失败:', error);
+                alert('加载报告数据失败: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

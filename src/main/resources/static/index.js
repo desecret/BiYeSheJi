@@ -850,6 +850,10 @@ async function runTestCase() {
         // 清空之前的结果
         resultsDiv.innerHTML = '<div class="log-item">测试执行完成</div>';
 
+        console.log('结果状态:', result.success);
+
+
+
         // 根据执行结果添加状态标识
         if (result.success === false) {
             resultsDiv.innerHTML += `<div class="log-item error">执行失败 - 错误类型: ${result.errorType || '未知错误'}</div>`;
@@ -884,6 +888,20 @@ async function runTestCase() {
             });
         }
 
+        if (result.success !== false) {
+            console.log('添加报告按钮, reportId:', result.reportId);
+
+            // 直接使用字符串拼接方式而不是模板字符串
+            const reportBtn = document.createElement('button');
+            reportBtn.className = 'button button-primary';
+            reportBtn.innerHTML = '<i class="fas fa-file-alt"></i> 查看测试报告';
+            reportBtn.onclick = function() {
+                openTestReport(result.reportId || '');
+            };
+
+            resultsDiv.appendChild(reportBtn);
+        }
+
         // 滚动到底部
         resultsDiv.scrollTop = resultsDiv.scrollHeight;
     } catch (error) {
@@ -897,6 +915,42 @@ async function runTestCase() {
 
         resultsDiv.scrollTop = resultsDiv.scrollHeight;
     }
+}
+
+// 添加打开报告页面的函数
+function openTestReport(reportId) {
+    // 添加日志以确认函数被调用
+    console.log("正在打开测试报告，ID:", reportId);
+
+    if (!reportId) {
+        alert("报告ID无效，无法查看报告");
+        return;
+    }
+    // 先请求最新的报告内容
+    const timestamp = new Date().getTime();
+
+    // 创建一个临时页面，并在其中加载报告内容
+    const reportWindow = window.open('about:blank', '_blank');
+
+    fetch(`tagui_script.tag.html?nocache=${timestamp}`, {
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+    })
+        .then(response => response.text())
+        .then(html => {
+            // 将获取的HTML内容写入新窗口
+            reportWindow.document.open();
+            reportWindow.document.write(html);
+            reportWindow.document.close();
+        })
+        .catch(error => {
+            console.error("加载报告失败:", error);
+            reportWindow.document.write("<h1>报告加载失败</h1>");
+            reportWindow.document.close();
+        });
 }
 
 // 上传图片并更新元素库

@@ -5,10 +5,12 @@ import org.example.server.config.ElementConfig;
 import org.example.server.config.ElementMappings;
 import org.example.server.locator.ElementLocatorFactory;
 import org.example.server.service.ElementConfigService;
+import org.example.server.service.ReportService;
 import org.example.server.service.TestCaseService;
 import org.example.server.util.util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,8 @@ import java.util.*;
 import static org.example.server.staticString.*;
 import static org.example.server.util.httpRequest.uploadImagesAndProcessResponse;
 import static org.example.server.util.util.*;
+import org.example.server.model.TestReport;
+import org.example.server.model.TestStep;
 
 /**
  * Web控制器，提供自动化测试系统的API接口
@@ -45,6 +49,8 @@ public class WebController {
     private ElementConfigService elementConfigService;
     @Autowired
     private TestCaseService testCaseService;
+    @Autowired
+    private ReportService reportService;
     /**
      * 构造函数
      * 
@@ -386,6 +392,8 @@ public class WebController {
         List<Map<String, Object>> steps = (List<Map<String, Object>>) request.get("steps");
         List<String> logs = new ArrayList<>();
         StringBuilder testCases = new StringBuilder();
+        Map<String, Object> finalResult = new HashMap<>();
+
 
         for (Map<String, Object> step : steps) {
             String type = (String) step.get("type");
@@ -408,6 +416,12 @@ public class WebController {
             // 执行命令文件
             String res;
             Map<String, Object> result = util.runTaguiCommand(TAGUI_SCRIPT_PATH);
+            // 生成测试报告
+            String reportId = reportService.generateReport(result);
+
+            // 在结果中添加报告ID
+            finalResult.put("reportId", reportId);
+
             if ((Boolean) result.get("success")) {
                 res = "详细输出：" + result.get("output") + "\n\n测试通过";
             } else {
@@ -415,12 +429,15 @@ public class WebController {
             }
             logs.add("执行结果：\n" + res);
             System.out.println("执行结果: " + res);
+
+            finalResult.put("success", true);
+
         } catch (Exception e) {
             logs.add("错误: " + e.getMessage());
+            finalResult.put("success", false);
         }
-        Map<String, Object> result = new HashMap<>();
-        result.put("logs", logs);
-        return result;
+        finalResult.put("logs", logs);
+        return finalResult;
     }
 
     /**
@@ -912,5 +929,39 @@ public class WebController {
         }
 
         return response;
+    }
+
+    @GetMapping("/report")
+    public String reportPage() {
+        return "report"; // 返回report.html模板
+    }
+
+    @GetMapping("/report/{reportId}")
+    @ResponseBody
+    public ResponseEntity<TestReport> getReportData(@PathVariable String reportId) {
+        TestReport report = reportService.getReportById(reportId);
+        if (report != null) {
+            return ResponseEntity.ok(report);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/report/screenshot/{reportId}/{filename}")
+    @ResponseBody
+    public ResponseEntity<Resource> getScreenshot(
+            @PathVariable String reportId,
+            @PathVariable String filename) throws IOException {
+
+        Path screenshotPath = Paths.get("reports", reportId, "screenshots", filename);
+        Resource resource = new UrlResource(screenshotPath.toUri());
+
+        if (resource.exists()) {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(resource);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
