@@ -66,47 +66,78 @@ public class TestCaseService {
      * @return 保存结果
      */
     @Transactional
-    public Map<String, Object> saveTestCase(String name, List<Map<String, Object>> steps) {
+public Map<String, Object> saveTestCase(Long id, String name, String originalName, List<Map<String, Object>> steps) {
     Map<String, Object> result = new HashMap<>();
 
     try {
-        // 检查是否存在同名测试用例
-        Optional<TestCaseEntity> existingCase = testCaseRepository.findByName(name);
         TestCaseEntity testCase;
 
-        if (existingCase.isPresent()) {
-            // 更新现有用例
-            testCase = existingCase.get();
+        // 根据ID查找测试用例
+        if (id != null) {
+            Optional<TestCaseEntity> existingCaseById = testCaseRepository.findById(id);
+            if (existingCaseById.isPresent()) {
+                testCase = existingCaseById.get();
 
-            // 正确处理集合：先移除所有现有步骤
-            List<TestCaseStepEntity> currentSteps = new ArrayList<>(testCase.getSteps());
-            for (TestCaseStepEntity step : currentSteps) {
-                testCase.getSteps().remove(step);
+                // 如果名称变更，需要检查新名称是否已存在
+                if (!testCase.getName().equals(name)) {
+                    Optional<TestCaseEntity> existingCaseByName = testCaseRepository.findByName(name);
+                    if (existingCaseByName.isPresent() && !existingCaseByName.get().getId().equals(id)) {
+                        result.put("success", false);
+                        result.put("error", "已存在相同名称的测试用例");
+                        return result;
+                    }
+                    // 更新名称
+                    testCase.setName(name);
+                }
+            } else {
+                // ID不存在，作为新用例处理
+                testCase = createNewTestCase(name, steps);
             }
-            testCaseRepository.saveAndFlush(testCase);
-        } else {
-            // 创建新用例
-            testCase = new TestCaseEntity();
-            testCase.setName(name);
-            testCase.setSteps(new ArrayList<>());
-            testCase = testCaseRepository.saveAndFlush(testCase);
+        }
+        // 根据原始名称查找测试用例(兼容旧版本)
+        else if (originalName != null && !originalName.isEmpty()) {
+            Optional<TestCaseEntity> existingCaseByName = testCaseRepository.findByName(originalName);
+            if (existingCaseByName.isPresent()) {
+                testCase = existingCaseByName.get();
+                // 如果名称变更，需要检查新名称是否已存在
+                if (!testCase.getName().equals(name)) {
+                    Optional<TestCaseEntity> existingWithNewName = testCaseRepository.findByName(name);
+                    if (existingWithNewName.isPresent() && !existingWithNewName.get().getId().equals(testCase.getId())) {
+                        result.put("success", false);
+                        result.put("error", "已存在相同名称的测试用例");
+                        return result;
+                    }
+                    // 更新名称
+                    testCase.setName(name);
+                }
+            } else {
+                // 原始名称不存在，作为新用例处理
+                testCase = createNewTestCase(name, steps);
+            }
+        }
+        // 没有ID和原始名称，直接根据name查找
+        else {
+            Optional<TestCaseEntity> existingCase = testCaseRepository.findByName(name);
+            if (existingCase.isPresent()) {
+                testCase = existingCase.get();
+            } else {
+                // 不存在，创建新用例
+                testCase = createNewTestCase(name, steps);
+            }
         }
 
-        // 添加新步骤
-        int stepOrder = 0;
-        for (Map<String, Object> step : steps) {
-            TestCaseStepEntity stepEntity = new TestCaseStepEntity();
-            stepEntity.setTestCase(testCase);
-            stepEntity.setStepOrder(stepOrder++);
-            stepEntity.setStepType((String) step.get("type"));
-            stepEntity.setContent((String) step.get("content"));
-            testCase.getSteps().add(stepEntity);
-        }
+        // 更新测试步骤
+        updateTestCaseSteps(testCase, steps);
 
         // 保存更新后的测试用例
         testCaseRepository.saveAndFlush(testCase);
 
         // 更新文件系统中的用例(用于向后兼容)
+        if (originalName != null && !originalName.isEmpty() && !originalName.equals(name)) {
+            // 如果名称变更，删除旧文件
+            Path oldFilePath = Paths.get(CASES_DIR + originalName + ".txt");
+            Files.deleteIfExists(oldFilePath);
+        }
         saveToFile(name, steps);
 
         result.put("success", true);
@@ -120,6 +151,34 @@ public class TestCaseService {
     return result;
 }
 
+// 创建新测试用例的辅助方法
+private TestCaseEntity createNewTestCase(String name, List<Map<String, Object>> steps) {
+    TestCaseEntity testCase = new TestCaseEntity();
+    testCase.setName(name);
+    testCase.setSteps(new ArrayList<>());
+    return testCaseRepository.saveAndFlush(testCase);
+}
+
+// 更新测试步骤的辅助方法
+private void updateTestCaseSteps(TestCaseEntity testCase, List<Map<String, Object>> steps) {
+    // 先移除所有现有步骤
+    List<TestCaseStepEntity> currentSteps = new ArrayList<>(testCase.getSteps());
+    for (TestCaseStepEntity step : currentSteps) {
+        testCase.getSteps().remove(step);
+    }
+    testCaseRepository.saveAndFlush(testCase);
+
+    // 添加新步骤
+    int stepOrder = 0;
+    for (Map<String, Object> step : steps) {
+        TestCaseStepEntity stepEntity = new TestCaseStepEntity();
+        stepEntity.setTestCase(testCase);
+        stepEntity.setStepOrder(stepOrder++);
+        stepEntity.setStepType((String) step.get("type"));
+        stepEntity.setContent((String) step.get("content"));
+        testCase.getSteps().add(stepEntity);
+    }
+}
     /**
      * 删除测试用例
      *
@@ -156,52 +215,52 @@ public class TestCaseService {
         return result;
     }
 
-    /**
-     * 从文件系统导入测试用例到数据库
-     *
-     * @return 导入结果
-     */
-    @Transactional
-    public Map<String, Object> importFromFiles() {
-        Map<String, Object> result = new HashMap<>();
-        List<String> imported = new ArrayList<>();
-        List<String> failed = new ArrayList<>();
-
-        try {
-            Path casesPath = Paths.get(CASES_DIR);
-            if (Files.exists(casesPath) && Files.isDirectory(casesPath)) {
-                Files.list(casesPath)
-                    .filter(path -> path.toString().endsWith(".txt"))
-                    .forEach(path -> {
-                        try {
-                            String name = path.getFileName().toString().replace(".txt", "");
-                            String content = new String(Files.readAllBytes(path));
-                            List<Map<String, Object>> steps = parseStepsFromContent(content);
-
-                            // 保存到数据库
-                            Map<String, Object> saveResult = saveTestCase(name, steps);
-                            if ((Boolean) saveResult.get("success")) {
-                                imported.add(name);
-                            } else {
-                                failed.add(name);
-                            }
-                        } catch (Exception e) {
-                            failed.add(path.getFileName().toString());
-                        }
-                    });
-            }
-
-            result.put("success", true);
-            result.put("imported", imported);
-            result.put("failed", failed);
-        } catch (Exception e) {
-            e.printStackTrace();
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        }
-
-        return result;
-    }
+//    /**
+//     * 从文件系统导入测试用例到数据库
+//     *
+//     * @return 导入结果
+//     */
+//    @Transactional
+//    public Map<String, Object> importFromFiles() {
+//        Map<String, Object> result = new HashMap<>();
+//        List<String> imported = new ArrayList<>();
+//        List<String> failed = new ArrayList<>();
+//
+//        try {
+//            Path casesPath = Paths.get(CASES_DIR);
+//            if (Files.exists(casesPath) && Files.isDirectory(casesPath)) {
+//                Files.list(casesPath)
+//                    .filter(path -> path.toString().endsWith(".txt"))
+//                    .forEach(path -> {
+//                        try {
+//                            String name = path.getFileName().toString().replace(".txt", "");
+//                            String content = new String(Files.readAllBytes(path));
+//                            List<Map<String, Object>> steps = parseStepsFromContent(content);
+//
+//                            // 保存到数据库
+//                            Map<String, Object> saveResult = saveTestCase(name, steps);
+//                            if ((Boolean) saveResult.get("success")) {
+//                                imported.add(name);
+//                            } else {
+//                                failed.add(name);
+//                            }
+//                        } catch (Exception e) {
+//                            failed.add(path.getFileName().toString());
+//                        }
+//                    });
+//            }
+//
+//            result.put("success", true);
+//            result.put("imported", imported);
+//            result.put("failed", failed);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            result.put("success", false);
+//            result.put("error", e.getMessage());
+//        }
+//
+//        return result;
+//    }
 
     /**
      * 将测试用例保存到文件(向后兼容)

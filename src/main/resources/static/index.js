@@ -130,18 +130,77 @@ async function loadTestCases() {
     try {
         const response = await fetch('/api/testcases');
         const testCases = await response.json();
+
         const testCasesList = document.getElementById('testCasesList');
         testCasesList.innerHTML = '';
 
         testCases.forEach(testCase => {
-            const div = document.createElement('div');
-            div.className = 'test-case-item';
-            div.textContent = testCase.name;
-            div.onclick = () => loadTestCaseContent(testCase.id);
-            testCasesList.appendChild(div);
+            const testCaseItem = document.createElement('div');
+            testCaseItem.className = 'test-case-item';
+            testCaseItem.setAttribute('data-id', testCase.id);
+
+            // 创建测试用例名称元素
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'test-case-name-span';
+            nameSpan.textContent = testCase.name;
+            nameSpan.onclick = function() {
+                loadTestCaseContent(testCase.id);
+                document.querySelectorAll('.test-case-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                testCaseItem.classList.add('active');
+            };
+
+            // 创建删除按钮
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'button button-small button-danger';
+            deleteButton.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteButton.onclick = function(event) {
+                event.stopPropagation(); // 阻止事件冒泡，避免触发测试用例选择
+                deleteTestCase(testCase.id, testCase.name);
+            };
+
+            testCaseItem.appendChild(nameSpan);
+            testCaseItem.appendChild(deleteButton);
+            testCasesList.appendChild(testCaseItem);
         });
     } catch (error) {
         console.error('加载测试用例列表失败:', error);
+    }
+}
+
+// 删除测试用例
+async function deleteTestCase(id, name) {
+    // 确认删除
+    if (!confirm(`确定要删除测试用例 "${name}" 吗？此操作不可恢复。`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/testcases/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // 删除成功，刷新列表
+            alert(`测试用例 "${name}" 已成功删除`);
+            await loadTestCases();
+
+            // 如果当前正在编辑的就是被删除的测试用例，则创建新的测试用例
+            if (currentTestCase && currentTestCase.id === id) {
+                createNewTestCase();
+            }
+        } else {
+            alert(`删除失败: ${result.error || '未知错误'}`);
+        }
+    } catch (error) {
+        console.error('删除测试用例失败:', error);
+        alert('删除测试用例失败: ' + error.message);
     }
 }
 
@@ -149,33 +208,26 @@ async function loadTestCases() {
 async function loadTestCaseContent(id) {
     try {
         const response = await fetch(`/api/testcases/${id}`);
+        const testCase = await response.json();
 
-        if (response.ok) {
-            const data = await response.json();
-            currentTestCase = id;
-            document.getElementById('testCaseName').value = data.name;
+        if (testCase && testCase.steps) {
+            // 存储当前测试用例信息
+            currentTestCase = {
+                id: id,
+                name: testCase.name
+            };
 
-            // 更新UI选中状态
-            document.querySelectorAll('.test-case-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.textContent === id) {
-                    item.classList.add('active');
-                }
-            });
+            document.getElementById('testCaseName').value = testCase.name;
+            document.getElementById('stepsList').innerHTML = '';
 
-            // 显示测试步骤
-            const stepsList = document.getElementById('stepsList');
-            stepsList.innerHTML = '';
-            data.steps.forEach((step, index) => {
+            testCase.steps.forEach((step, index) => {
                 addStep(step, index + 1);
             });
-        } else {
-            const errorData = await response.json().catch(() => ({}));
-            alert('加载测试用例失败: ' + errorData);
+
+            updateStepNumbers();
         }
     } catch (error) {
         console.error('加载测试用例内容失败:', error);
-        alert('加载测试用例失败');
     }
 }
 
@@ -712,8 +764,11 @@ function createNewTestCase() {
 
 // 保存测试用例
 async function saveTestCase() {
-    const name = document.getElementById('testCaseName').value;
-    if (!name) {
+    const testCaseName = document.getElementById('testCaseName').value;
+    const originalTestCaseName = currentTestCase ? currentTestCase.name : '';
+    const testCaseId = currentTestCase ? currentTestCase.id : null;
+
+    if (!testCaseName) {
         alert('请输入测试用例名称');
         return;
     }
@@ -762,19 +817,34 @@ async function saveTestCase() {
     });
 
     try {
-        await fetch('/api/testcases', {
+        const response = await fetch('/api/testcases', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                name: name,
+                id: testCaseId,
+                name: testCaseName,
+                originalName: originalTestCaseName,
                 steps: steps
             })
         });
 
-        alert('保存成功');
-        loadTestCases();
+        const result = await response.json();
+
+        if (result.success) {
+            alert('测试用例保存成功!');
+            // 更新当前测试用例信息
+            currentTestCase = {
+                id: result.id,
+                name: testCaseName
+            };
+            await loadTestCases();
+            // 更新UI显示
+            document.getElementById('testCaseName').value = testCaseName;
+        } else {
+            alert('保存失败: ' + result.error);
+        }
     } catch (error) {
         console.error('保存测试用例失败:', error);
         alert('保存失败');
@@ -889,14 +959,13 @@ async function runTestCase() {
         }
 
         if (result.success !== false) {
-            console.log('添加报告按钮, reportId:', result.reportId);
 
             // 直接使用字符串拼接方式而不是模板字符串
             const reportBtn = document.createElement('button');
             reportBtn.className = 'button button-primary';
             reportBtn.innerHTML = '<i class="fas fa-file-alt"></i> 查看测试报告';
             reportBtn.onclick = function() {
-                openTestReport(result.reportId || '');
+                openTestReport();
             };
 
             resultsDiv.appendChild(reportBtn);
@@ -918,14 +987,8 @@ async function runTestCase() {
 }
 
 // 添加打开报告页面的函数
-function openTestReport(reportId) {
-    // 添加日志以确认函数被调用
-    console.log("正在打开测试报告，ID:", reportId);
+function openTestReport() {
 
-    if (!reportId) {
-        alert("报告ID无效，无法查看报告");
-        return;
-    }
     // 先请求最新的报告内容
     const timestamp = new Date().getTime();
 
@@ -1059,7 +1122,7 @@ function displayElementsGrid() {
             if (elementImages[`${element.context}/${element.name}`]) {
                 const img = document.createElement('img');
                 // 使用API端点获取图片
-                img.src = `/api/element/image?path=${encodeURIComponent(elementImages[elementKey])}`;
+                img.src = `/api/elements/image?path=${encodeURIComponent(elementImages[elementKey])}`;
                 img.alt = element.name;
                 img.className = 'element-image';
                 img.onerror = function() {
@@ -1184,7 +1247,7 @@ function openElementModal(element) {
         if (elementImages[elementKey]) {
             // 添加时间戳防止浏览器缓存
             const timestamp = new Date().getTime();
-            previewImage.src = `/api/element/image?path=${encodeURIComponent(elementImages[elementKey])}&t=${timestamp}`;
+            previewImage.src = `/api/elements/image?path=${encodeURIComponent(elementImages[elementKey])}&t=${timestamp}`;
             previewImage.style.display = 'block';
 
             // 设置元素高亮区域 (如果有坐标信息)

@@ -5,7 +5,6 @@ import org.example.server.config.ElementConfig;
 import org.example.server.config.ElementMappings;
 import org.example.server.locator.ElementLocatorFactory;
 import org.example.server.service.ElementConfigService;
-import org.example.server.service.ReportService;
 import org.example.server.service.TestCaseService;
 import org.example.server.util.util;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,14 +48,39 @@ public class WebController {
     private ElementConfigService elementConfigService;
     @Autowired
     private TestCaseService testCaseService;
-    @Autowired
-    private ReportService reportService;
+
     /**
      * 构造函数
      * 
      * @param init 初始化对象，用于系统启动
      */
     public WebController(Init init) {
+    }
+
+    /**
+     * 获取所有可用的动作类型列表
+     *
+     * @return 动作类型列表
+     */
+    @GetMapping("/actions")
+    public List<String> getActions() {
+        List<String> actions = new ArrayList<>();
+        actions.add("全屏");
+        actions.add("点击");
+        actions.add("右键点击");
+        actions.add("双击");
+        actions.add("鼠标移动到");
+        actions.add("在当前鼠标位置，按下鼠标左键");
+        actions.add("在当前鼠标位置，弹起鼠标左键");
+        actions.add("等待");
+        actions.add("设置自动等待");
+        actions.add("在");
+        actions.add("访问");
+        actions.add("出现");
+        actions.add("存在");
+        actions.add("输出");
+        actions.add("如果");
+        return actions;
     }
 
     /**
@@ -87,7 +111,7 @@ public class WebController {
     }
 
     /**
-     * 获取指定测试用例的详细内容
+     * 根据id获取测试用例详情
      * <p>
      * 读取指定测试用例文件并解析其中的命令步骤，返回结构化的步骤列表
      * </p>
@@ -97,85 +121,6 @@ public class WebController {
      */
     @GetMapping("/testcases/{id}")
     public ResponseEntity<Map<String, Object>> getTestCaseContent(@PathVariable String id) {
-//        Map<String, Object> response = new HashMap<>();
-//        try {
-//            String filePath = CASES_DIR + id;
-//            String content = new String(Files.readAllBytes(Paths.get(filePath)));
-//            List<Map<String, Object>> steps = new ArrayList<>();
-//
-//            // 解析测试用例内容
-//            String[] lines = content.split("\n");
-//            for (String line : lines) {
-//                Map<String, Object> step = new HashMap<>();
-//                if (line.startsWith("全屏")) {
-//                    step.put("type", "全屏");
-//                    step.put("content", "");
-//                } else if (line.startsWith("点击")) {
-//                    step.put("type", "点击");
-//                    step.put("content", line.substring(2));
-//                } else if (line.startsWith("右键点击")) {
-//                    step.put("type", "右键点击");
-//                    step.put("content", line.substring(4));
-//                } else if (line.startsWith("双击")) {
-//                    step.put("type", "双击");
-//                    step.put("content", line.substring(2));
-//                } else if (line.startsWith("鼠标移动到")) {
-//                    step.put("type", "鼠标移动到");
-//                    step.put("content", line.substring(5));
-//                } else if (line.startsWith("在当前鼠标位置，按下鼠标左键")) {
-//                    step.put("type", "在当前鼠标位置，按下鼠标左键");
-//                    step.put("content", "");
-//                } else if (line.startsWith("在当前鼠标位置，弹起鼠标左键")) {
-//                    step.put("type", "在当前鼠标位置，弹起鼠标左键");
-//                    step.put("content", "");
-//                } else if (line.startsWith("等待")) {
-//                    step.put("type", "等待");
-//                    // 提取数字部分
-//                    String timeStr = line.substring(2).replaceAll("[^0-9]", "");
-//                    step.put("content", timeStr);
-//                } else if (line.startsWith("设置自动等待")) {
-//                    step.put("type", "设置自动等待");
-//                    // 提取数字部分
-//                    String timeStr = line.substring(6).replaceAll("[^0-9]", "");
-//                    step.put("content", timeStr);
-//                } else if (line.startsWith("在")) {
-//                    step.put("type", "在");
-//                    // 保留完整内容
-//                    step.put("content", line.substring(1));
-//                } else if (line.startsWith("访问")) {
-//                    step.put("type", "访问");
-//                    // 保留完整URL，包括第一个字母
-//                    step.put("content", line.substring(2));
-//                } else if (line.endsWith("出现")) {
-//                    step.put("type", "出现");
-//                    step.put("content", line.substring(0, line.length() - 2));
-//                } else if (line.endsWith("存在")) {
-//                    step.put("type", "存在");
-//                    step.put("content", line.substring(0, line.length() - 2));
-//                } else if (line.startsWith("输出")) {
-//                    step.put("type", "输出");
-//                    // 提取引号中的内容
-//                    String outputContent = line.substring(2);
-////                    if (outputContent.startsWith("\"") && outputContent.endsWith("\"")) {
-////                        outputContent = outputContent.substring(1, outputContent.length() - 1);
-////                    }
-//                    step.put("content", outputContent);
-//                } else if (line.startsWith("如果")) {
-//                    step.put("type", "如果");
-//                    step.put("content", line.substring(2));
-//                }
-//                if (!step.isEmpty()) {
-//                    steps.add(step);
-//                }
-//            }
-//
-//            response.put("steps", steps);
-//            response.put("success", true);
-//        } catch (IOException e) {
-//            response.put("success", false);
-//            response.put("error", "无法读取测试用例内容：" + e.getMessage());
-//        }
-//        return response;
             Map<String, Object> testCase = testCaseService.getTestCaseById(Long.valueOf(id));
             if (testCase != null) {
                 return ResponseEntity.ok(testCase);
@@ -183,76 +128,6 @@ public class WebController {
                 return ResponseEntity.notFound().build();
             }
     }
-
-    /**
-     * 根据名称获取测试用例详情
-     *
-     * @param name 测试用例名称
-     * @return 测试用例详情
-     */
-    @GetMapping("/testcases/name/{name}")
-    public ResponseEntity<Map<String, Object>> getTestCaseByName(@PathVariable String name) {
-        Map<String, Object> testCase = testCaseService.getTestCaseByName(name);
-        if (testCase != null) {
-            return ResponseEntity.ok(testCase);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    /**
-     * 获取UI元素库
-     * <p>
-     * 从YAML配置文件中读取元素映射配置，返回所有UI元素的列表
-     * </p>
-     * 
-     * @return UI元素配置列表
-     */
-    @GetMapping("/elements")
-    public List<ElementConfig> getElements() {
-//        try {
-//            Constructor constructor = new Constructor(ElementMappings.class);
-//            Yaml yaml = new Yaml(constructor);
-//
-//            ElementMappings mappings = yaml.load(Files.newInputStream(Paths.get(YAML_FILE)));
-//            if (mappings != null && mappings.getConfigs() != null) {
-//                return mappings.getConfigs();
-//            }
-//            return new ArrayList<>();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            return new ArrayList<>();
-//        }
-        return elementConfigService.getAllElements();
-    }
-
-    /**
-     * 获取所有可用的动作类型列表
-     * 
-     * @return 动作类型列表
-     */
-    @GetMapping("/actions")
-    public List<String> getActions() {
-        List<String> actions = new ArrayList<>();
-        actions.add("全屏");
-        actions.add("点击");
-        actions.add("右键点击");
-        actions.add("双击");
-        actions.add("鼠标移动到");
-        actions.add("在当前鼠标位置，按下鼠标左键");
-        actions.add("在当前鼠标位置，弹起鼠标左键");
-        actions.add("等待");
-        actions.add("设置自动等待");
-        actions.add("在");
-        actions.add("访问");
-        actions.add("出现");
-        actions.add("存在");
-        actions.add("输出");
-        actions.add("如果");
-        return actions;
-    }
-
-
 
     /**
      * 保存测试用例
@@ -264,71 +139,9 @@ public class WebController {
      */
     @PostMapping("/testcases")
     public ResponseEntity<Map<String, Object>> saveTestCase(@RequestBody Map<String, Object> request) {
-//        String name = (String) request.get("name");
-//        List<Map<String, Object>> steps = (List<Map<String, Object>>) request.get("steps");
-//
-//        StringBuilder content = new StringBuilder();
-//        for (Map<String, Object> step : steps) {
-//            String type = (String) step.get("type");
-//            String contentStr = (String) step.get("content");
-//
-//            switch (type) {
-//                case "全屏":
-//                    content.append("全屏\n");
-//                    break;
-//                case "点击":
-//                    content.append("点击").append(contentStr).append("\n");
-//                    break;
-//                case "右键点击":
-//                    content.append("右键点击").append(contentStr).append("\n");
-//                    break;
-//                case "双击":
-//                    content.append("双击").append(contentStr).append("\n");
-//                    break;
-//                case "鼠标移动到":
-//                    content.append("鼠标移动到").append(contentStr).append("\n");
-//                    break;
-//                case "在当前鼠标位置，按下鼠标左键":
-//                    content.append("在当前鼠标位置，按下鼠标左键\n");
-//                    break;
-//                case "在当前鼠标位置，弹起鼠标左键":
-//                    content.append("在当前鼠标位置，弹起鼠标左键\n");
-//                    break;
-//                case "等待":
-//                    content.append("等待").append(contentStr).append("\n");
-//                    break;
-//                case "设置自动等待":
-//                    content.append("设置自动等待").append(contentStr).append("\n");
-//                    break;
-//                case "在":
-//                    content.append("在").append(contentStr).append("\n");
-//                    break;
-//                case "访问":
-//                    content.append("访问").append(contentStr).append("\n");
-//                    break;
-//                case "出现":
-//                    content.append(contentStr).append("出现\n");
-//                    break;
-//                case "存在":
-//                    content.append(contentStr).append("存在\n");
-//                    break;
-//                case "输出":
-//                    content.append("输出").append(contentStr).append("\n");
-//                    break;
-//                case "如果":
-//                    content.append("如果").append(contentStr).append("\n");
-//                    break;
-//            }
-//        }
-//
-//        try {
-//            File file = new File(CASES_DIR + name + ".txt");
-//            java.nio.file.Files.write(file.toPath(), content.toString().getBytes());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
+        Long id = request.get("id") != null ? Long.valueOf(request.get("id").toString()) : null;
         String name = (String) request.get("name");
+        String originalName = (String) request.get("originalName");
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> steps = (List<Map<String, Object>>) request.get("steps");
 
@@ -339,7 +152,7 @@ public class WebController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        Map<String, Object> result = testCaseService.saveTestCase(name, steps);
+        Map<String, Object> result = testCaseService.saveTestCase(id, name, originalName, steps);
         if ((Boolean) result.get("success")) {
             return ResponseEntity.ok(result);
         } else {
@@ -356,21 +169,6 @@ public class WebController {
     @DeleteMapping("/testcases/{id}")
     public ResponseEntity<Map<String, Object>> deleteTestCase(@PathVariable Long id) {
         Map<String, Object> result = testCaseService.deleteTestCase(id);
-        if ((Boolean) result.get("success")) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
-        }
-    }
-
-    /**
-     * 从文件系统导入测试用例到数据库
-     *
-     * @return 导入结果
-     */
-    @PostMapping("/testcases/import")
-    public ResponseEntity<Map<String, Object>> importTestCases() {
-        Map<String, Object> result = testCaseService.importFromFiles();
         if ((Boolean) result.get("success")) {
             return ResponseEntity.ok(result);
         } else {
@@ -416,11 +214,6 @@ public class WebController {
             // 执行命令文件
             String res;
             Map<String, Object> result = util.runTaguiCommand(TAGUI_SCRIPT_PATH);
-            // 生成测试报告
-            String reportId = reportService.generateReport(result);
-
-            // 在结果中添加报告ID
-            finalResult.put("reportId", reportId);
 
             if ((Boolean) result.get("success")) {
                 res = "详细输出：" + result.get("output") + "\n\n测试通过";
@@ -438,6 +231,24 @@ public class WebController {
         }
         finalResult.put("logs", logs);
         return finalResult;
+    }
+
+
+    /*
+     ************************************************元素库相关接口**************************************************
+     */
+
+    /**
+     * 获取UI元素库
+     * <p>
+     * 从YAML配置文件中读取元素映射配置，返回所有UI元素的列表
+     * </p>
+     *
+     * @return UI元素配置列表
+     */
+    @GetMapping("/elements")
+    public List<ElementConfig> getElements() {
+        return elementConfigService.getAllElements();
     }
 
     /**
@@ -741,7 +552,7 @@ public class WebController {
      * @param path 图片路径
      * @return 图片资源
      */
-    @GetMapping("/element/image")
+    @GetMapping("/elements/image")
     public ResponseEntity<Resource> getElementImage(@RequestParam String path) {
         try {
             // 日志记录请求路径
@@ -931,37 +742,4 @@ public class WebController {
         return response;
     }
 
-    @GetMapping("/report")
-    public String reportPage() {
-        return "report"; // 返回report.html模板
-    }
-
-    @GetMapping("/report/{reportId}")
-    @ResponseBody
-    public ResponseEntity<TestReport> getReportData(@PathVariable String reportId) {
-        TestReport report = reportService.getReportById(reportId);
-        if (report != null) {
-            return ResponseEntity.ok(report);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @GetMapping("/report/screenshot/{reportId}/{filename}")
-    @ResponseBody
-    public ResponseEntity<Resource> getScreenshot(
-            @PathVariable String reportId,
-            @PathVariable String filename) throws IOException {
-
-        Path screenshotPath = Paths.get("reports", reportId, "screenshots", filename);
-        Resource resource = new UrlResource(screenshotPath.toUri());
-
-        if (resource.exists()) {
-            return ResponseEntity.ok()
-                    .contentType(MediaType.IMAGE_PNG)
-                    .body(resource);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
-    }
 }
