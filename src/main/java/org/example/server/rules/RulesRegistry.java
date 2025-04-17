@@ -21,9 +21,20 @@ public class RulesRegistry {
     public static Rules registerRules() throws RuleEngineException {
         Rules rules = new Rules();
 
-        try{// 注册点击规则
+        try{
+            // 注册点击规则
             rules.register(RuleFactory.createRule("click", facts -> {
-                String command = getCommand("click", facts.get("element"), null, facts.get("context"));
+                String command = getCommand("click",
+                        facts.get("element"), null, facts.get("context"));
+
+                System.out.println(command); // 保留控制台输出
+                taguiCommands.add(command); // 添加到命令列表
+            }));
+
+            // 注册输入规则
+            rules.register(RuleFactory.createRule("type", facts -> {
+                String command = getCommand("type", facts.get("element"),
+                        facts.get("value"), facts.get("context"));
 
                 System.out.println(command); // 保留控制台输出
                 taguiCommands.add(command); // 添加到命令列表
@@ -71,13 +82,7 @@ public class RulesRegistry {
                 taguiCommands.add(command); // 添加到命令列表
             }));
 
-            // 注册输入规则
-            rules.register(RuleFactory.createRule("type", facts -> {
-                String command = getCommand("type", facts.get("element"), facts.get("value"), facts.get("context"));
 
-                System.out.println(command); // 保留控制台输出
-                taguiCommands.add(command); // 添加到命令列表
-            }));
 
             // 访问网站
             rules.register((RuleFactory.createRule("", facts -> {
@@ -174,6 +179,15 @@ public class RulesRegistry {
         taguiCommands.clear();
     }
 
+    /**
+     * 获取命令
+     *
+     * @param action  动作
+     * @param element 元素
+     * @param value   值
+     * @param context 上下文
+     * @return 命令字符串
+     */
     public static String getCommand(String action, String element, String value, String context) {
         Map<String, Object> params = new HashMap<>();
         params.put("action", action);
@@ -190,6 +204,11 @@ public class RulesRegistry {
         return CommandGenerator.generateCommand(params);
     }
 
+    /**
+     * 获取已收集的命令列表
+     *
+     * @return 命令列表
+     */
     public static List<String> getCommands() {
         return taguiCommands;
     }

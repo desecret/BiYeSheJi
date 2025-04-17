@@ -31,8 +31,6 @@ import java.util.*;
 import static org.example.server.staticString.*;
 import static org.example.server.util.httpRequest.uploadImagesAndProcessResponse;
 import static org.example.server.util.util.*;
-import org.example.server.model.TestReport;
-import org.example.server.model.TestStep;
 
 /**
  * Web控制器，提供自动化测试系统的API接口
