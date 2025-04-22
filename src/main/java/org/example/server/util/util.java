@@ -269,12 +269,19 @@ public class util {
     }
 
 
+    /**
+     * 执行TagUI命令
+     *
+     * @param scriptPath TagUI脚本文件路径
+     * @return 执行结果
+     */
     public static Map<String, Object> runTaguiCommand(String scriptPath) {
         Map<String, Object> result = new HashMap<>();
 
         try {
             // 启动 TagUI 进程
-            ProcessBuilder processBuilder = new ProcessBuilder("cmd", "/c", "tagui", scriptPath, "-r");
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                    "cmd", "/c", "tagui", scriptPath, "-r");
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
 
@@ -292,6 +299,7 @@ public class util {
                 result.put("output", output.toString());
             }
 
+            // 生成测试报告
             boolean success = enhanceTagUIReport(TAGUI_SCRIPT_PATH, REPORT_PATH);
 
             result.put("success", exitCode == 0 && success);

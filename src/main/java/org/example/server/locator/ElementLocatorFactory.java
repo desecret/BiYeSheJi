@@ -45,7 +45,7 @@ public class ElementLocatorFactory {
 
             // 缓存所有配置
             elementMappings.getConfigs().forEach(config -> {
-                elementConfigs.put(config.getName(), config);
+                elementConfigs.put(config.getContext() + "_" + config.getName(), config);
 
                 if (config.getImagePath() != null && !config.getImagePath().isEmpty()) {
                     ImageMappings.put(config.getContext() + "_" + config.getName(), config.getImagePath());
@@ -74,10 +74,11 @@ public class ElementLocatorFactory {
         return getLocator(elementName, null);
     }
 
-    public static String getLocator(String elementName, String context) throws RuleEngineException {
+    public static String getLocator(String elementName, String context)
+            throws RuleEngineException {
         String locatorType;
         try {
-            locatorType = getLocatorType(elementName, null);
+            locatorType = getLocatorType(elementName, null, context);
         } catch (RuleEngineException e) {
             ErrorHandler.handle(e);
             throw new RuleEngineException("获取元素定位类型失败: " + e.getMessage(),
@@ -93,15 +94,15 @@ public class ElementLocatorFactory {
         return strategy.getLocator(elementName, context);
     }
 
-    public static String getLocatorType(String elementName, String preferredType) {
+    public static String getLocatorType(String elementName, String preferredType, String context) {
         if (elementName == null || elementName.trim().isEmpty()) {
             throw new RuleEngineException("元素名称为空",
                     RuleEngineException.ErrorLevel.ERROR);
         }
 
-        ElementConfig config = elementConfigs.get(elementName);
+        ElementConfig config = elementConfigs.get(context + "_" + elementName);
         if (config == null) {
-            throw new RuleEngineException("找不到元素的映射配置: " + elementName,
+            throw new RuleEngineException("找不到元素的映射配置: " + context + "_" + elementName,
                     RuleEngineException.ErrorLevel.ERROR);
         }
 
