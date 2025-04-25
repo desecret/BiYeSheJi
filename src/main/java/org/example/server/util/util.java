@@ -667,6 +667,12 @@ public class util {
      * @return 如果匹配返回true，否则返回false
      */
     private static boolean commandsMatch(String expected, String actual) {
+        // 特殊处理echo命令
+        if (expected.trim().startsWith("echo ")) {
+            String echoContent = expected.trim().substring(5).trim(); // 移除"echo "前缀
+            return actual.trim().equals(echoContent);
+        }
+
         // 将命令按空格分割
         String[] expectedParts = expected.trim().split("\\s+");
         String[] actualParts = actual.trim().split("\\s+");
