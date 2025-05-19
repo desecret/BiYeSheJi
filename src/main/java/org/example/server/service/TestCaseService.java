@@ -66,7 +66,7 @@ public class TestCaseService {
      * @return 保存结果
      */
     @Transactional
-public Map<String, Object> saveTestCase(Long id, String name, String originalName, List<Map<String, Object>> steps) {
+    public Map<String, Object> saveTestCase(Long id, String name, String originalName, List<Map<String, Object>> steps) {
     Map<String, Object> result = new HashMap<>();
 
     try {

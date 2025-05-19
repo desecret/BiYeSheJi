@@ -1570,8 +1570,6 @@ async function addNewElement() {
                     
                     if (imageResult.success) {
                         resultsDiv.innerHTML += '<div class="log-item success">新元素和图片已成功创建</div>';
-                    } else {
-                        resultsDiv.innerHTML += `<div class="log-item error">元素已创建，但图片上传失败: ${imageResult.error || '未知错误'}</div>`;
                     }
                     
                     // 清空图片输入

@@ -1,0 +1,6 @@
+访问login.taobao.com
+点击taobao的login button
+如果taobao的accounterror label出现，则在taobao的account input输入"123456789"
+在taobao的password input输入"123456789"
+点击taobao的login button
+如果taobao的passworderror label出现，则输出success

@@ -328,6 +328,50 @@ public class util {
         // 读取原始报告内容
         String htmlContent = new String(Files.readAllBytes(Paths.get(reportPath)), StandardCharsets.UTF_8);
 
+        // 删除前三行默认命令
+        String startTag = "<span style=\"color: rgb(30,130,201);\">START";
+        int startTagIdx = htmlContent.indexOf(startTag);
+        if (startTagIdx != -1) {
+            // 找到 START 标记后的第二个 <br>
+            int firstBrIdx = htmlContent.indexOf("<br>", startTagIdx);
+            if (firstBrIdx != -1) {
+                int secondBrIdx = htmlContent.indexOf("<br>", firstBrIdx + 4); // 跳过第一个<br>
+                if (secondBrIdx != -1) {
+                    secondBrIdx += 4; // 跳过第二个<br>
+
+                    // 查找run cmd、keyboard [alt][space]、keyboard x三个命令
+                    int runCmdIdx = htmlContent.indexOf("run cmd /c chcp 65001", secondBrIdx);
+
+                    if (runCmdIdx >= 0 && runCmdIdx < secondBrIdx + 10) {
+                        int firstCmdEndIdx = htmlContent.indexOf("<br>", runCmdIdx);
+
+                        if (firstCmdEndIdx >= 0) {
+                            int keyboardAltIdx = htmlContent.indexOf("keyboard [alt][space]", firstCmdEndIdx);
+
+                            if (keyboardAltIdx >= 0 && keyboardAltIdx < firstCmdEndIdx + 25) {
+                                int secondCmdEndIdx = htmlContent.indexOf("<br>", keyboardAltIdx);
+
+                                if (secondCmdEndIdx >= 0) {
+                                    int keyboardXIdx = htmlContent.indexOf("keyboard x", secondCmdEndIdx);
+
+                                    if (keyboardXIdx >= 0 && keyboardXIdx < secondCmdEndIdx + 15) {
+                                        int thirdCmdEndIdx = htmlContent.indexOf("<br>", keyboardXIdx);
+
+                                        if (thirdCmdEndIdx >= 0) {
+                                            thirdCmdEndIdx += 4; // 包含 "<br>"
+
+                                            // 删除这三行命令及其对应的<br>标签
+                                            htmlContent = htmlContent.substring(0, secondBrIdx) + htmlContent.substring(thirdCmdEndIdx);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 解析HTML
         Document doc = Jsoup.parse(htmlContent);
 
@@ -423,7 +467,7 @@ public class util {
 
 
     /**
-     * 从TagUI HTML报告中提取测试命令
+     * 从TagUI HTML报告中提取测试命令，跳过前三行默认命令
      *
      * @param reportPath 报告文件路径
      * @return 提取的命令列表
@@ -466,9 +510,12 @@ public class util {
             }
         }
 
+        // 跳过前三行默认执行的命令
+        int startPos = Math.min(3, rawCommands.size());
+
         // 检查是否有重复的URL命令在最后
         boolean removeLast = false;
-        if (rawCommands.size() >= 2) {
+        if (rawCommands.size() > startPos + 1) { // 确保有至少有非默认命令
             String lastCommand = rawCommands.get(rawCommands.size() - 1);
 
             // 检查最后一个命令是否是URL
@@ -481,7 +528,7 @@ public class util {
 
                 // 查找倒数第二行前面是否有一个空行
                 boolean hasEmptyLine = false;
-                for (int i = secondLastPosition; i >= 0; i--) {
+                for (int i = secondLastPosition; i >= startPos; i--) {
                     if (lines[i].trim().isEmpty()) {
                         hasEmptyLine = true;
                         break;
@@ -490,7 +537,7 @@ public class util {
 
                 // 检查该URL是否在前面的命令中出现过
                 boolean urlAppearedBefore = false;
-                for (int i = 0; i < rawCommands.size() - 1; i++) {
+                for (int i = startPos; i < rawCommands.size() - 1; i++) {
                     String cmd = rawCommands.get(i);
                     if (cmd.startsWith(lastUrl)) {
                         urlAppearedBefore = true;
@@ -506,7 +553,8 @@ public class util {
         }
 
         // 处理命令，删除URL后半部分，并根据条件舍去最后一个命令
-        for (int i = 0; i < (removeLast ? rawCommands.size() - 1 : rawCommands.size()); i++) {
+        int endPos = removeLast ? rawCommands.size() - 1 : rawCommands.size();
+        for (int i = startPos; i < endPos; i++) {
             String cmd = rawCommands.get(i);
 
             // 如果是URL命令，则删除URL后半部分（例如" - 电力运维管理系统"）
@@ -520,9 +568,9 @@ public class util {
             commands.add(cmd);
         }
 
+
         return commands;
     }
-
 
 
     /**
@@ -553,6 +601,11 @@ public class util {
                 continue;
             }
             expectedCommands.add(command);
+        }
+
+        // 删除expectedCommands的前三行默认命令
+        if (expectedCommands.size() > 3) {
+            expectedCommands = expectedCommands.subList(3, expectedCommands.size());
         }
 
         // 从报告中提取实际执行的命令
